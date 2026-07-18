@@ -1,1 +1,1 @@
-# competentThinking
+https://vadimpetrovios.github.io/competentThinking
