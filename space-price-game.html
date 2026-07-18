@@ -1,3 +1,5 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Цена за кг — космическая викторина</title>
 <style>
   :root {
@@ -23,6 +25,8 @@
     background: var(--void);
     color: var(--ink);
     font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
   }
   #stars {
     position: fixed;
@@ -235,6 +239,9 @@
     padding: 13px 0;
     cursor: pointer;
     transition: background .1s ease, transform .05s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
   .keypad button:hover { background: rgba(255,255,255,.1); }
   .keypad button:active { transform: scale(.96); }
