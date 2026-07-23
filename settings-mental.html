@@ -7,8 +7,6 @@
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Устный счёт — настройка</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
 <style>
   :root {
     --void: #0A0A1C;
@@ -216,11 +214,6 @@
 </div>
 
 <script>
-(async function () {
-  const session = await sbGetSession();
-  if(!session){ window.location.href = 'login.html'; }
-})();
-
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 
 function genAdd(level){

@@ -7,8 +7,6 @@
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Тренажёр по математике</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
 <style>
   :root {
     --void: #0A0A1C;
@@ -227,7 +225,7 @@
         <line x1="183.2" y1="327.6" x2="126.8" y2="252.4" stroke="var(--line)" stroke-width="3"/>
         <line x1="117.7" y1="203.1" x2="142.3" y2="116.9"  stroke="var(--line)" stroke-width="3"/>
 
-        <g class="level-node unlocked" data-level="1" data-href="math.html">
+        <g class="level-node unlocked" data-level="1" data-href="price-trainer.html">
           <circle class="halo" cx="110" cy="460" r="26" fill="none" stroke="var(--accent)" stroke-width="2"/>
           <circle class="ring" cx="110" cy="460" r="26" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/>
           <text x="110" y="467" font-size="20" text-anchor="middle" fill="var(--accent-ink)">1</text>
@@ -239,7 +237,7 @@
           <rect x="189" y="345" width="22" height="16" rx="3" fill="var(--muted)" opacity="0.9"/>
         </g>
 
-        <g id="level2-unlocked" class="level-node unlocked" data-level="2" data-href="price-trainer.html" style="display:none;">
+        <g id="level2-unlocked" class="level-node unlocked" data-level="2" data-href="math.html" style="display:none;">
           <circle class="halo" cx="200" cy="350" r="26" fill="none" stroke="var(--accent)" stroke-width="2"/>
           <circle class="ring" cx="200" cy="350" r="26" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/>
           <text x="200" y="357" font-size="20" text-anchor="middle" fill="var(--accent-ink)">2</text>
@@ -259,10 +257,6 @@
       </svg>
     </div>
 
-    <div style="display:flex; gap:10px; margin-top:4px;">
-      <a class="cta secondary" href="leaderboard.html" style="flex:1; text-align:center;">🏆 Лидеры</a>
-      <button class="cta secondary" id="logoutBtn" style="flex:1;">Выйти</button>
-    </div>
   </div>
 </div>
 
@@ -274,28 +268,13 @@ document.querySelectorAll('.level-node').forEach(node=>{
   });
 });
 
-document.getElementById('logoutBtn').addEventListener('click', sbLogout);
-
-(async function init(){
-  const session = await sbGetSession();
-  if(!session){ window.location.href = 'login.html'; return; }
-
-  try{
-    const { data, error } = await window.sb.rpc('get_access_status');
-    if(error) throw error;
-    const status = Array.isArray(data) ? data[0] : data;
-    const level2Unlocked = status ? status.level2_unlocked : false;
-
-    if(level2Unlocked){
-      document.getElementById('level2-locked').style.display = 'none';
-      document.getElementById('level2-unlocked').style.display = '';
-      document.getElementById('line12').setAttribute('stroke', 'var(--accent)');
-      document.getElementById('line12').setAttribute('opacity', '0.55');
-    }
-  } catch(e){ console.error('get_access_status failed', e); }
-
-  document.querySelector('.levels-svg').classList.add('ready');
-})();
+if(localStorage.getItem('level2Unlocked') === 'true'){
+  document.getElementById('level2-locked').style.display = 'none';
+  document.getElementById('level2-unlocked').style.display = '';
+  document.getElementById('line12').setAttribute('stroke', 'var(--accent)');
+  document.getElementById('line12').setAttribute('opacity', '0.55');
+}
+document.querySelector('.levels-svg').classList.add('ready');
 </script>
 <script>
 (function(){

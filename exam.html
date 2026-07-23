@@ -7,8 +7,6 @@
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Экзамен</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
 <style>
   :root {
     --void: #0A0A1C;
@@ -102,8 +100,10 @@
     text-align: center; font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
     font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1.5; margin: 4px 0;
   }
-  .instr { text-align: center; font-size: 12.5px; color: var(--muted); margin: -6px 0 2px; }
-
+  .question.prose {
+    text-align: left; font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; font-weight: 500; line-height: 1.55;
+  }
   .choice-row { display: flex; flex-direction: column; gap: 10px; }
 
   .readout {
@@ -211,7 +211,6 @@
     </div>
 
     <p class="topic-badge">Экзамен · все темы</p>
-    <div class="instr" id="instrEl">—</div>
     <div class="question" id="questionEl">—</div>
 
     <div id="choiceControls" class="choice-row" style="display:none;"></div>
@@ -254,11 +253,6 @@
 </div>
 
 <script>
-
-(async function () {
-  const session = await sbGetSession();
-  if(!session){ window.location.href = 'login.html'; }
-})();
 
 function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ [a,b]=[b, a%b]; } return a || 1; }
 function isPrime(n){ if(n<2) return false; for(let i=2;i*i<=n;i++){ if(n%i===0) return false; } return true; }
@@ -316,6 +310,188 @@ function triangleSVG(opp, adj, hyp){
 </svg>`;
 }
 
+/* ---------- генераторы темы «Задачи-ловушки» ---------- */
+
+function randPick(arr){ return arr[randInt(0, arr.length-1)]; }
+function round2(n){ return Math.round(n*100)/100; }
+function fmtNum(n){ return parseFloat(n.toFixed(2)).toString(); }
+
+function pluralRu(n, one, few, many){
+  if(!Number.isInteger(n)) return few;
+  const n100 = Math.abs(n) % 100;
+  const n10 = n100 % 10;
+  if(n100 >= 11 && n100 <= 14) return many;
+  if(n10 === 1) return one;
+  if(n10 >= 2 && n10 <= 4) return few;
+  return many;
+}
+function nounForm(obj, n){ return pluralRu(n, obj.one, obj.few, obj.many); }
+
+const PERIODS = {
+  day:{one:'день', few:'дня', many:'дней', gender:'m'},
+  minute:{one:'минута', few:'минуты', many:'минут', gender:'f'},
+  hour:{one:'час', few:'часа', many:'часов', gender:'m'},
+  week:{one:'неделя', few:'недели', many:'недель', gender:'f'},
+};
+function everyClauseFor(per, every){
+  if(every === 1){
+    if(per.gender === 'f'){
+      const lastChar = per.one.slice(-1);
+      const accForm = per.one.slice(0,-1) + (lastChar === 'я' ? 'ю' : 'у');
+      return `каждую ${accForm}`;
+    }
+    return `каждый ${per.one}`;
+  }
+  return `каждые ${fmtNum(every)} ${nounForm(per,every)}`;
+}
+
+const RATE_CHOICES = [0.5, 1, 2, 0.25, 0.2, 0.1, 1.5, 2.5];
+
+/* сюжеты вида «агенты × время → величина» (куры/яйца и варианты) */
+const STORIES = [
+  { subj:{one:'курица',few:'курицы',many:'куриц'}, unit:{one:'яйцо',few:'яйца',many:'яиц'},
+    verbPast:'снесли', verbFuture:'снесут', verbInf:'снести', period:'day' },
+  { subj:{one:'пчела',few:'пчелы',many:'пчёл'}, unit:{one:'кг мёда',few:'кг мёда',many:'кг мёда'},
+    verbPast:'собрали', verbFuture:'соберут', verbInf:'собрать', period:'day' },
+  { subj:{one:'корова',few:'коровы',many:'коров'}, unit:{one:'литр молока',few:'литра молока',many:'литров молока'},
+    verbPast:'дали', verbFuture:'дадут', verbInf:'дать', period:'day' },
+  { subj:{one:'станок',few:'станка',many:'станков'}, unit:{one:'деталь',few:'детали',many:'деталей'},
+    verbPast:'сделали', verbFuture:'сделают', verbInf:'сделать', period:'minute' },
+  { subj:{one:'пекарь',few:'пекаря',many:'пекарей'}, unit:{one:'буханка',few:'буханки',many:'буханок'},
+    verbPast:'испекли', verbFuture:'испекут', verbInf:'испечь', period:'day' },
+  { subj:{one:'насос',few:'насоса',many:'насосов'}, unit:{one:'литр воды',few:'литра воды',many:'литров воды'},
+    verbPast:'откачали', verbFuture:'откачают', verbInf:'откачать', period:'minute' },
+  { subj:{one:'мастерица',few:'мастерицы',many:'мастериц'}, unit:{one:'клубок',few:'клубка',many:'клубков'},
+    verbPast:'спряли', verbFuture:'спрядут', verbInf:'спрясть', period:'day' },
+  { subj:{one:'принтер',few:'принтера',many:'принтеров'}, unit:{one:'страница',few:'страницы',many:'страниц'},
+    verbPast:'напечатали', verbFuture:'напечатают', verbInf:'напечатать', period:'minute' },
+];
+
+/* сюжеты вида «агенты × время = постоянный объём работы» (маляры/забор и варианты) */
+const WORK_STORIES = [
+  (aA,dA,aB,dB,per)=>{ const s={one:'маляр',few:'маляра',many:'маляров'};
+    return `${fmtNum(aA)} ${nounForm(s,aA)} красят забор за ${dA} ${nounForm(per,dA)}. За сколько ${per.many} покрасят такой же забор ${fmtNum(aB)} ${nounForm(s,aB)} (при той же скорости на человека)?`; },
+  (aA,dA,aB,dB,per)=>{ const s={one:'землекоп',few:'землекопа',many:'землекопов'};
+    return `${fmtNum(aA)} ${nounForm(s,aA)} выкопали яму за ${dA} ${nounForm(per,dA)}. За сколько ${per.many} выкопают такую же яму ${fmtNum(aB)} ${nounForm(s,aB)}?`; },
+  (aA,dA,aB,dB,per)=>{ const s={one:'уборщица',few:'уборщицы',many:'уборщиц'};
+    return `${fmtNum(aA)} ${nounForm(s,aA)} убирают офис за ${dA} ${nounForm(per,dA)}. За сколько ${per.many} уберут такой же офис ${fmtNum(aB)} ${nounForm(s,aB)}?`; },
+];
+
+/* сюжеты на удвоение (лилии/бактерии/грибница/вирус) */
+const GROWTH_STORIES = [
+  { subject:'Лист кувшинки на пруду', growVerb:'удваивается', measure:'пруд', verb:'зарастёт', period:'day', every:1 },
+  { subject:'Бактерии в банке', growVerb:'удваиваются', measure:'банка', verb:'заполнится', period:'minute', every:1 },
+  { subject:'Грибница в лесу', growVerb:'удваивается', measure:'лес', verb:'покроется грибницей', period:'week', every:1 },
+  { subject:'Количество клеток вируса в организме', growVerb:'удваивается', measure:'организм', verb:'заполнится', period:'hour', every:3 },
+];
+
+function genRateForward(){
+  const story = randPick(STORIES);
+  const per = PERIODS[story.period];
+  const rate = randPick(RATE_CHOICES);
+  const agentsA = Math.random()<0.35 ? randInt(2,9)+0.5 : randInt(2,12);
+  const periodA = randInt(2,10);
+  const qtyA = round2(agentsA*periodA*rate);
+  const agentsB = randInt(2,14);
+  const periodB = randInt(2,10);
+  const qtyB = round2(agentsB*periodB*rate);
+  const display = `${fmtNum(agentsA)} ${nounForm(story.subj,agentsA)} за ${periodA} ${nounForm(per,periodA)} ${story.verbPast} ${fmtNum(qtyA)} ${nounForm(story.unit,qtyA)}. Сколько ${story.unit.many} ${story.verbFuture} ${fmtNum(agentsB)} ${nounForm(story.subj,agentsB)} за ${periodB} ${nounForm(per,periodB)} при той же продуктивности?`;
+  return { display, kind:'text', placeholder:'ответ',
+    check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-qtyB)<0.05; }, correctStr: fmtNum(qtyB) };
+}
+
+function genRateInverseAgents(){
+  const story = randPick(STORIES);
+  const per = PERIODS[story.period];
+  const rate = randPick(RATE_CHOICES);
+  const agentsA = randInt(2,12);
+  const periodA = randInt(2,10);
+  const qtyA = round2(agentsA*periodA*rate);
+  const agentsB = randPick([2,3,4,5,6,8,10,12,15,20,2.5,3.5,4.5,7.5]);
+  const periodB = randInt(2,10);
+  const qtyB = round2(agentsB*periodB*rate);
+  const display = `${fmtNum(agentsA)} ${nounForm(story.subj,agentsA)} за ${periodA} ${nounForm(per,periodA)} ${story.verbPast} ${fmtNum(qtyA)} ${nounForm(story.unit,qtyA)}. Сколько ${story.subj.many} нужно, чтобы ${story.verbInf} ${fmtNum(qtyB)} ${nounForm(story.unit,qtyB)} за ${periodB} ${nounForm(per,periodB)} при той же продуктивности?`;
+  return { display, kind:'text', placeholder:'ответ',
+    check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-agentsB)<0.05; }, correctStr: fmtNum(agentsB) };
+}
+
+function genWorkConstant(){
+  const agentsA = randInt(2,10);
+  const daysA = randInt(2,12);
+  const totalWork = agentsA*daysA;
+  const divisors = [];
+  for(let d=2; d<=totalWork; d++){ if(totalWork % d === 0 && d !== agentsA) divisors.push(d); }
+  const agentsB = divisors.length ? randPick(divisors) : agentsA*2;
+  const daysB = totalWork/agentsB;
+  const per = Math.random()<0.5 ? PERIODS.hour : PERIODS.day;
+  const display = randPick(WORK_STORIES)(agentsA,daysA,agentsB,daysB,per);
+  return { display, kind:'text', placeholder:'ответ',
+    check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-daysB)<0.01; }, correctStr: fmtNum(daysB) };
+}
+
+function isCleanDecimal(x, places){
+  const scale = Math.pow(10, places);
+  return Math.abs(Math.round(x*scale) - x*scale) < 1e-6;
+}
+const PIPE_CANDS = [1,1.5,2,2.5,3,4,5,6,8,9,10,12,15,16,18,20,24,30];
+
+function genCombinedRates(){
+  const per = PERIODS.hour;
+  const mode = Math.random()<0.6 ? 'sum' : 'diff';
+  if(mode === 'sum'){
+    let T, tA, tBRaw;
+    for(let tries=0; tries<60; tries++){
+      T = randPick(PIPE_CANDS);
+      tA = randPick(PIPE_CANDS);
+      if(tA<=T) continue;
+      tBRaw = 1/(1/T - 1/tA);
+      if(tBRaw>0 && isCleanDecimal(tBRaw,2)) break;
+    }
+    const tB = round2(tBRaw);
+    const display = `Труба А наполняет бассейн за ${fmtNum(tA)} ${nounForm(per,tA)}, труба Б — за ${fmtNum(tB)} ${nounForm(per,tB)}. За сколько часов бассейн наполнится, если открыть обе трубы одновременно?`;
+    return { display, kind:'text', placeholder:'ответ в часах',
+      check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-T)<0.03; }, correctStr: fmtNum(T) };
+  } else {
+    let T, tDrain, tFillRaw;
+    for(let tries=0; tries<60; tries++){
+      T = randPick(PIPE_CANDS);
+      tDrain = randPick(PIPE_CANDS);
+      tFillRaw = 1/(1/T + 1/tDrain);
+      if(isCleanDecimal(tFillRaw,2)) break;
+    }
+    const tFill = round2(tFillRaw);
+    const display = `Труба наполняет бассейн за ${fmtNum(tFill)} ${nounForm(per,tFill)}, а сливное отверстие опустошает полный бассейн за ${fmtNum(tDrain)} ${nounForm(per,tDrain)}. Если открыть и трубу, и слив одновременно (бассейн пуст), за сколько часов он наполнится?`;
+    return { display, kind:'text', placeholder:'ответ в часах',
+      check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-T)<0.03; }, correctStr: fmtNum(T) };
+  }
+}
+
+function genMeetingMotion(){
+  const speedA = randInt(4,24)*5;
+  const speedB = randInt(4,24)*5;
+  const time = randPick([1,1.5,2,2.5,3,4,5,6]);
+  const distance = round2((speedA+speedB)*time);
+  const display = `Из двух городов, расстояние между которыми ${fmtNum(distance)} км, выезжают навстречу друг другу два автомобиля — со скоростями ${speedA} км/ч и ${speedB} км/ч. Через сколько часов они встретятся?`;
+  return { display, kind:'text', placeholder:'ответ в часах',
+    check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-time)<0.03; }, correctStr: fmtNum(time) };
+}
+
+function genExpGrowth(){
+  const story = randPick(GROWTH_STORIES);
+  const per = PERIODS[story.period];
+  const every = story.every;
+  const k = randPick([1,2,3]);
+  const fullAt = every * randInt(k+3, k+15);
+  const answerAt = fullAt - k*every;
+  const fracLabel = k===1 ? 'наполовину' : (k===2 ? 'на четверть' : 'на одну восьмую');
+  const everyClause = everyClauseFor(per, every);
+  const display = `${story.subject} ${story.growVerb} ${everyClause}. Через ${fullAt} ${nounForm(per,fullAt)} ${story.measure} ${story.verb} полностью. Через сколько ${per.many} ${story.measure} ${story.verb} ${fracLabel}?`;
+  return { display, kind:'text', placeholder:'ответ',
+    check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-answerAt)<0.01; }, correctStr: fmtNum(answerAt) };
+}
+
+const REASONING_GENERATORS = [genRateForward, genRateInverseAgents, genWorkConstant, genCombinedRates, genMeetingMotion, genExpGrowth];
+function genReasoning(){ return randPick(REASONING_GENERATORS)(); }
 
 function genNumbers(){
   if(Math.random()<0.5){
@@ -509,12 +685,13 @@ const POOLS = [
   { name:'Степени и корни', gen: genPowers },
   { name:'Тригонометрия', gen: genTrig },
   { name:'Устный счёт', gen: genMental },
+  { name:'Задачи-ловушки', gen: genReasoning },
 ];
 
 function genProblem(){
   const pool = POOLS[randInt(0, POOLS.length-1)];
   const problem = pool.gen();
-  problem.poolName = pool.name;
+  problem.prose = pool.name === 'Задачи-ловушки';
   return problem;
 }
 
@@ -529,7 +706,6 @@ const trainingView = document.getElementById('trainingView');
 const resultsView = document.getElementById('resultsView');
 const timerEl = document.getElementById('timerVal');
 const scoreEl = document.getElementById('scoreVal');
-const instrEl = document.getElementById('instrEl');
 const questionEl = document.getElementById('questionEl');
 const choiceControls = document.getElementById('choiceControls');
 const textControls = document.getElementById('textControls');
@@ -577,7 +753,7 @@ keypadExtra.addEventListener('click', e=>{
 function nextProblem(){
   const problem = genProblem();
   currentProblem = problem;
-  instrEl.textContent = problem.poolName + ' · ' + problem.instr;
+  questionEl.classList.toggle('prose', !!problem.prose);
   questionEl.innerHTML = problem.display;
   hintEl.textContent = problem.hint || '';
   readoutEl.classList.remove('flash-good','flash-bad');
@@ -628,7 +804,7 @@ function finish(early){
   resultsView.style.display = 'flex';
 
   const acc = stats.total > 0 ? Math.round(stats.correct/stats.total*100) : 0;
-  const correctThreshold = 77;
+  const correctThreshold = Math.round(77 * 0.9);
   const accGood = acc > 90;
   const countGood = stats.correct > correctThreshold;
 
@@ -658,19 +834,6 @@ function finish(early){
     sub.textContent = 'Потренируйся ещё по отдельным темам и попробуй снова.';
   }
 
-  if(!early){
-    recordAttempt(passed);
-  }
-}
-
-async function recordAttempt(passed){
-  try{
-    const session = await sbGetSession();
-    if(!session) return;
-    await window.sb.rpc('submit_attempt', {
-      p_level: 1, p_correct: stats.correct, p_total: stats.total, p_passed: passed
-    });
-  } catch(e){ console.error('submit_attempt failed', e); }
 }
 
 document.getElementById('exitBtn').addEventListener('click', ()=> finish(true));

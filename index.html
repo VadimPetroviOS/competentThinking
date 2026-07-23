@@ -7,8 +7,6 @@
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Тренажёр по математике</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
 <style>
   :root {
     --void: #0A0A1C;
@@ -223,11 +221,13 @@
 
 <script>
 let navigated = false;
-async function goNext(){
+function goNext(){
   if(navigated) return;
   navigated = true;
-  const session = await sbGetSession();
-  window.location.href = session ? 'levels.html' : 'login.html';
+  const level2Unlocked = localStorage.getItem('level2Unlocked') === 'true';
+  const lastLevel = localStorage.getItem('lastLevel');
+  const dest = (level2Unlocked && lastLevel !== '1') ? 'math.html' : 'price-trainer.html';
+  window.location.href = dest;
 }
 document.body.addEventListener('click', goNext);
 setTimeout(goNext, 2600);

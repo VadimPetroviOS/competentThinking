@@ -7,8 +7,6 @@
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Тренажёр по математике</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
 <style>
   :root {
     --void: #0A0A1C;
@@ -218,10 +216,7 @@
 </div>
 
 <script>
-(async function () {
-  const session = await sbGetSession();
-  if(!session){ window.location.href = 'login.html'; }
-})();
+localStorage.setItem('lastLevel', '2');
 
 const TOPICS = [
   {id:8, name:"Устный счёт", file:"settings-mental.html"},
@@ -232,6 +227,7 @@ const TOPICS = [
   {id:5, name:"Уравнения", file:"training-equations.html"},
   {id:6, name:"Степени и корни", file:"training-powers.html"},
   {id:7, name:"Тригонометрия", file:"training-trig.html"},
+  {id:9, name:"Задачи-ловушки", file:"training-reasoning.html"},
 ];
 
 const grid = document.getElementById('topicGrid');
