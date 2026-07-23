@@ -121,8 +121,6 @@
   .readout input::placeholder { color: var(--muted); }
   .readout.flash-good { border-color: var(--good); box-shadow: 0 0 0 3px var(--good-bg); }
   .readout.flash-bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
-  .cta.secondary.flash-good { border-color: var(--good); background: var(--good-bg); color: var(--good); }
-  .cta.secondary.flash-bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
 
   .hint { text-align: center; font-size: 11px; color: var(--muted); margin: 0; }
 
@@ -185,7 +183,7 @@
   input[type="range"] { width: 100%; accent-color: var(--accent); }
   .range-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
   .settings-label { font-size: 12.5px; font-weight: 700; color: var(--ink); letter-spacing: .02em; }
-  .settings-error { color: var(--bad); font-size: 12px; text-align: center; min-height: 16px; }
+  .settings-error { color: var(--bad); font-size: 12px; text-align: center; }
   .preview-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .preview-chip {
     font-family: ui-monospace, monospace; font-size: 13.5px; font-weight: 600; color: var(--ink);
@@ -193,44 +191,96 @@
   }
   .back-link { text-align: center; font-size: 11.5px; color: var(--muted); text-decoration: none; display: block; }
   .back-link:hover { color: var(--ink); }
-
-  body{ overflow:hidden; cursor:pointer; }
-  .splash-stage{
-    position:relative; z-index:1; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:22px;
-  }
-  .logo-wrap{
-    position:relative; width:220px; height:220px;
-    opacity:0; transform:scale(.05);
-    animation: approach 2s cubic-bezier(.15,.6,.25,1) forwards;
-  }
-  .logo-wrap img{ width:100%; height:100%; display:block; }
-  @keyframes approach{
-    0%{ opacity:0; transform:scale(.05); }
-    12%{ opacity:1; }
-    100%{ opacity:1; transform:scale(1); }
-  }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas><div class="nebula"></div>
-<div class="splash-stage">
-  <div class="logo-wrap" id="logoWrap">
-    <img src="logo.png" alt="">
+<div class="stage">
+  <div class="panel">
+    <h1 class="title">Тренажёр по <span>математике</span></h1>
+    <p class="subtitle">Выбери тему и время — и начинай тренировку</p>
+
+    <div class="settings-label">Тип задачи</div>
+    <div class="topic-grid" id="topicGrid"></div>
+
+    <div class="settings-label" style="margin-top:6px;">Продолжительность: <span id="durationValue">3</span> мин</div>
+    <input type="range" id="durationSlider" min="1" max="10" value="3" step="1">
+    <div class="range-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+
+    <div>
+      <button class="cta" id="startTrainingBtn" style="width:100%;">Начать тренировку ▶</button>
+      <div class="settings-error" id="settingsError"></div>
+    </div>
+
+    <a class="cta" href="exam.html" style="text-align:center; text-decoration:none;">Экзамен</a>
+    <a class="back-link" href="levels.html" style="margin-top:4px;">← К уровням</a>
   </div>
 </div>
 
 <script>
-let navigated = false;
-async function goNext(){
-  if(navigated) return;
-  navigated = true;
+(async function () {
   const session = await sbGetSession();
-  window.location.href = session ? 'levels.html' : 'login.html';
+  if(!session){ window.location.href = 'login.html'; }
+})();
+
+const TOPICS = [
+  {id:8, name:"Устный счёт", file:"settings-mental.html"},
+  {id:1, name:"Простые числа", file:"training-primes.html"},
+  {id:2, name:"Дроби", file:"training-fractions.html"},
+  {id:3, name:"Проценты", file:"training-percent.html"},
+  {id:4, name:"Пропорции", file:"training-proportions.html"},
+  {id:5, name:"Уравнения", file:"training-equations.html"},
+  {id:6, name:"Степени и корни", file:"training-powers.html"},
+  {id:7, name:"Тригонометрия", file:"training-trig.html"},
+];
+
+const grid = document.getElementById('topicGrid');
+const startBtn = document.getElementById('startTrainingBtn');
+
+function updateStartBtnLabel(){
+  const selected = document.querySelector('#topicGrid input:checked');
+  startBtn.textContent = (selected && parseInt(selected.value,10) === 8) ? 'Далее →' : 'Начать тренировку ▶';
 }
-document.body.addEventListener('click', goNext);
-setTimeout(goNext, 2600);
+
+TOPICS.forEach((t, i)=>{
+  const label = document.createElement('label');
+  label.className = 'chip';
+  label.innerHTML = `<input type="radio" name="topic" value="${t.id}" ${i===0?'checked':''}><span>${t.name}</span>`;
+  const radio = label.querySelector('input');
+  radio.addEventListener('change', ()=>{
+    document.querySelectorAll('.chip').forEach(el=> el.classList.remove('checked'));
+    label.classList.add('checked');
+    updateStartBtnLabel();
+  });
+  if(i===0) label.classList.add('checked');
+  grid.appendChild(label);
+});
+updateStartBtnLabel();
+
+const durationSlider = document.getElementById('durationSlider');
+const durationValueEl = document.getElementById('durationValue');
+
+const incomingParams = new URLSearchParams(window.location.search);
+const incomingDuration = parseInt(incomingParams.get('duration'), 10);
+if(incomingDuration >= 1 && incomingDuration <= 10){
+  durationSlider.value = incomingDuration;
+  durationValueEl.textContent = incomingDuration;
+}
+
+durationSlider.addEventListener('input', ()=>{ durationValueEl.textContent = durationSlider.value; });
+
+startBtn.addEventListener('click', ()=>{
+  const selected = document.querySelector('#topicGrid input:checked');
+  if(!selected){
+    document.getElementById('settingsError').textContent = 'Выбери тему.';
+    return;
+  }
+  document.getElementById('settingsError').textContent = '';
+  const topic = TOPICS.find(t => t.id === parseInt(selected.value,10));
+  const minutes = durationSlider.value;
+  const params = new URLSearchParams({ duration: minutes });
+  window.location.href = topic.file + '?' + params.toString();
+});
 </script>
 <script>
 (function(){

@@ -194,43 +194,108 @@
   .back-link { text-align: center; font-size: 11.5px; color: var(--muted); text-decoration: none; display: block; }
   .back-link:hover { color: var(--ink); }
 
-  body{ overflow:hidden; cursor:pointer; }
-  .splash-stage{
-    position:relative; z-index:1; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:22px;
-  }
-  .logo-wrap{
-    position:relative; width:220px; height:220px;
-    opacity:0; transform:scale(.05);
-    animation: approach 2s cubic-bezier(.15,.6,.25,1) forwards;
-  }
-  .logo-wrap img{ width:100%; height:100%; display:block; }
-  @keyframes approach{
-    0%{ opacity:0; transform:scale(.05); }
-    12%{ opacity:1; }
-    100%{ opacity:1; transform:scale(1); }
-  }
+  .levels-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .levels-title{ text-align:center; }
+  .levels-svg{ display:block; margin:10px auto 0; touch-action:none; overflow:visible; opacity:0; transition: opacity .25s ease; }
+  .levels-svg.ready{ opacity:1; }
+  .level-node{ cursor:default; }
+  .level-node.unlocked{ cursor:pointer; }
+  .level-node circle.ring{ transition: filter .15s ease, transform .1s ease; transform-box: fill-box; transform-origin: center; }
+  .level-node.unlocked:hover circle.ring{ filter: brightness(1.15); transform: scale(1.05); }
+  .level-node text{ font-family: ui-monospace, monospace; font-weight:700; pointer-events:none; user-select:none; }
+  .level-node .node-label{ font-family: -apple-system, "Segoe UI", sans-serif; font-weight:600; pointer-events:none; user-select:none; }
+  .level-node.unlocked .node-label{ fill: var(--ink); }
+  .level-node .halo{ transform-box: fill-box; transform-origin: center; animation: haloPulse 2.4s ease-out infinite; pointer-events:none; }
+  @keyframes haloPulse{ 0%{ transform:scale(1); opacity:.55; } 100%{ transform:scale(1.7); opacity:0; } }
+  .progress-line{ text-align:center; font-size:11.5px; color:var(--muted); margin-top:-4px; }
+  .progress-line b{ color:var(--accent); }
+
+  .panel.levels-panel{ animation: panelIn .5s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes panelIn{ from{ opacity:0; transform:translateY(14px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas><div class="nebula"></div>
-<div class="splash-stage">
-  <div class="logo-wrap" id="logoWrap">
-    <img src="logo.png" alt="">
+<div class="stage">
+  <div class="panel levels-panel" style="max-width:360px;">
+    <h1 class="title">Карта <span>уровней</span></h1>
+    <p class="subtitle">Проходи уровни по порядку — новые открываются постепенно</p>
+
+    <div class="levels-wrap">
+      <svg class="levels-svg" viewBox="0 0 300 500" width="260" height="433">
+        <line id="line12" x1="127.7" y1="438.3" x2="182.3" y2="371.7" stroke="var(--line)" stroke-width="3"/>
+        <line x1="183.2" y1="327.6" x2="126.8" y2="252.4" stroke="var(--line)" stroke-width="3"/>
+        <line x1="117.7" y1="203.1" x2="142.3" y2="116.9"  stroke="var(--line)" stroke-width="3"/>
+
+        <g class="level-node unlocked" data-level="1" data-href="math.html">
+          <circle class="halo" cx="110" cy="460" r="26" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <circle class="ring" cx="110" cy="460" r="26" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/>
+          <text x="110" y="467" font-size="20" text-anchor="middle" fill="var(--accent-ink)">1</text>
+        </g>
+
+        <g id="level2-locked" class="level-node" data-level="2">
+          <circle class="ring" cx="200" cy="350" r="24" fill="rgba(255,255,255,.08)" stroke="var(--muted)" stroke-width="2"/>
+          <path d="M 191 346 v -6 a 9 9 0 0 1 18 0 v 6" fill="none" stroke="var(--muted)" stroke-width="2.2"/>
+          <rect x="189" y="345" width="22" height="16" rx="3" fill="var(--muted)" opacity="0.9"/>
+        </g>
+
+        <g id="level2-unlocked" class="level-node unlocked" data-level="2" data-href="price-trainer.html" style="display:none;">
+          <circle class="halo" cx="200" cy="350" r="26" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <circle class="ring" cx="200" cy="350" r="26" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/>
+          <text x="200" y="357" font-size="20" text-anchor="middle" fill="var(--accent-ink)">2</text>
+        </g>
+
+        <g class="level-node" data-level="3">
+          <circle class="ring" cx="110" cy="230" r="24" fill="rgba(255,255,255,.08)" stroke="var(--muted)" stroke-width="2"/>
+          <text x="110" y="237" font-size="18" text-anchor="middle" fill="var(--muted)">3</text>
+          <text class="node-label" x="146" y="237" font-size="13" text-anchor="start" fill="var(--muted)">Скоро</text>
+        </g>
+
+        <g class="level-node" data-level="4">
+          <circle class="ring" cx="150" cy="90" r="24" fill="rgba(255,255,255,.08)" stroke="var(--muted)" stroke-width="2"/>
+          <text x="150" y="97" font-size="18" text-anchor="middle" fill="var(--muted)">4</text>
+          <text class="node-label" x="186" y="97" font-size="13" text-anchor="start" fill="var(--muted)">Скоро</text>
+        </g>
+      </svg>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:4px;">
+      <a class="cta secondary" href="leaderboard.html" style="flex:1; text-align:center;">🏆 Лидеры</a>
+      <button class="cta secondary" id="logoutBtn" style="flex:1;">Выйти</button>
+    </div>
   </div>
 </div>
 
 <script>
-let navigated = false;
-async function goNext(){
-  if(navigated) return;
-  navigated = true;
+document.querySelectorAll('.level-node').forEach(node=>{
+  node.addEventListener('click', ()=>{
+    const href = node.getAttribute('data-href');
+    if(href) window.location.href = href;
+  });
+});
+
+document.getElementById('logoutBtn').addEventListener('click', sbLogout);
+
+(async function init(){
   const session = await sbGetSession();
-  window.location.href = session ? 'levels.html' : 'login.html';
-}
-document.body.addEventListener('click', goNext);
-setTimeout(goNext, 2600);
+  if(!session){ window.location.href = 'login.html'; return; }
+
+  try{
+    const { data, error } = await window.sb.rpc('get_access_status');
+    if(error) throw error;
+    const status = Array.isArray(data) ? data[0] : data;
+    const level2Unlocked = status ? status.level2_unlocked : false;
+
+    if(level2Unlocked){
+      document.getElementById('level2-locked').style.display = 'none';
+      document.getElementById('level2-unlocked').style.display = '';
+      document.getElementById('line12').setAttribute('stroke', 'var(--accent)');
+      document.getElementById('line12').setAttribute('opacity', '0.55');
+    }
+  } catch(e){ console.error('get_access_status failed', e); }
+
+  document.querySelector('.levels-svg').classList.add('ready');
+})();
 </script>
 <script>
 (function(){

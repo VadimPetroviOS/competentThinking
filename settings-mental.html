@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Тренажёр по математике</title>
+<title>Устный счёт — настройка</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <style>
@@ -121,8 +121,6 @@
   .readout input::placeholder { color: var(--muted); }
   .readout.flash-good { border-color: var(--good); box-shadow: 0 0 0 3px var(--good-bg); }
   .readout.flash-bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
-  .cta.secondary.flash-good { border-color: var(--good); background: var(--good-bg); color: var(--good); }
-  .cta.secondary.flash-bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
 
   .hint { text-align: center; font-size: 11px; color: var(--muted); margin: 0; }
 
@@ -186,51 +184,143 @@
   .range-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
   .settings-label { font-size: 12.5px; font-weight: 700; color: var(--ink); letter-spacing: .02em; }
   .settings-error { color: var(--bad); font-size: 12px; text-align: center; min-height: 16px; }
-  .preview-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .preview-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-content: center; min-height: 68px; }
   .preview-chip {
     font-family: ui-monospace, monospace; font-size: 13.5px; font-weight: 600; color: var(--ink);
     background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
   }
   .back-link { text-align: center; font-size: 11.5px; color: var(--muted); text-decoration: none; display: block; }
   .back-link:hover { color: var(--ink); }
-
-  body{ overflow:hidden; cursor:pointer; }
-  .splash-stage{
-    position:relative; z-index:1; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:22px;
-  }
-  .logo-wrap{
-    position:relative; width:220px; height:220px;
-    opacity:0; transform:scale(.05);
-    animation: approach 2s cubic-bezier(.15,.6,.25,1) forwards;
-  }
-  .logo-wrap img{ width:100%; height:100%; display:block; }
-  @keyframes approach{
-    0%{ opacity:0; transform:scale(.05); }
-    12%{ opacity:1; }
-    100%{ opacity:1; transform:scale(1); }
-  }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas><div class="nebula"></div>
-<div class="splash-stage">
-  <div class="logo-wrap" id="logoWrap">
-    <img src="logo.png" alt="">
+<div class="stage">
+  <div class="panel">
+    <h1 class="title">Устный <span>счёт</span></h1>
+    <p class="subtitle">Выбери действие и уровень сложности</p>
+
+    <div class="settings-label">Действие</div>
+    <div class="op-grid" id="opGrid"></div>
+
+    <div class="settings-label" style="margin-top:6px;">Уровень сложности: <span id="levelValue">1</span></div>
+    <input type="range" id="levelSlider" min="1" max="4" value="1" step="1">
+    <div class="range-ticks"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+
+    <div class="settings-label">Примеры этого уровня</div>
+    <div class="preview-row" id="previewBox"></div>
+
+    <button class="cta" id="startBtn" style="margin-top:8px;">Начать тренировку ▶</button>
+    <a class="back-link" href="math.html" id="backTopicsLink">← Назад к темам</a>
   </div>
 </div>
 
 <script>
-let navigated = false;
-async function goNext(){
-  if(navigated) return;
-  navigated = true;
+(async function () {
   const session = await sbGetSession();
-  window.location.href = session ? 'levels.html' : 'login.html';
+  if(!session){ window.location.href = 'login.html'; }
+})();
+
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+function genAdd(level){
+  let a,b;
+  if(level===1){ a=randInt(2,9); b=randInt(2,9); }
+  else if(level===2){ a=randInt(10,99); b=randInt(10,99); }
+  else if(level===3){ a=randInt(100,999); b=randInt(100,999); }
+  else { a=randInt(1000,9999); b=randInt(1000,9999); }
+  return `${a} + ${b}`;
 }
-document.body.addEventListener('click', goNext);
-setTimeout(goNext, 2600);
+function genSub(level){
+  let a,b;
+  if(level===1){ a=randInt(2,9); b=randInt(2,9); }
+  else if(level===2){ a=randInt(10,99); b=randInt(10,99); }
+  else if(level===3){ a=randInt(100,999); b=randInt(100,999); }
+  else { a=randInt(1000,9999); b=randInt(1000,9999); }
+  if(a<b){ const t=a; a=b; b=t; }
+  return `${a} − ${b}`;
+}
+function genMul(level){
+  let a,b;
+  if(level===1){ a=randInt(2,9); b=randInt(2,9); }
+  else if(level===2){ a=randInt(10,99); b=randInt(2,9); }
+  else if(level===3){ a=randInt(100,999); b=randInt(2,9); }
+  else { a=randInt(10,99); b=randInt(10,99); }
+  return `${a} × ${b}`;
+}
+function genDiv(level){
+  let divisor, quotient, dividend;
+  if(level===1){ divisor=randInt(2,9); quotient=randInt(2,9); }
+  else if(level===2){ do{ divisor=randInt(2,9); quotient=randInt(2,9); } while(divisor*quotient<10); }
+  else if(level===3){ divisor=randInt(2,9); quotient=randInt(100,999); }
+  else { divisor=randInt(10,99); quotient=randInt(10,99); }
+  dividend = divisor*quotient;
+  return `${dividend} ÷ ${divisor}`;
+}
+const GENERATORS = { add:genAdd, sub:genSub, mul:genMul, div:genDiv };
+
+const OPS = [
+  {id:'add', name:'Сложение'},
+  {id:'sub', name:'Вычитание'},
+  {id:'mul', name:'Умножение'},
+  {id:'div', name:'Деление'},
+  {id:'all', name:'Всё вперемешку'},
+];
+
+const opGrid = document.getElementById('opGrid');
+OPS.forEach((o,i)=>{
+  const label = document.createElement('label');
+  label.className = 'chip' + (i===0 ? ' checked' : '');
+  label.innerHTML = `<input type="radio" name="op" value="${o.id}" ${i===0?'checked':''}><span>${o.name}</span>`;
+  const radio = label.querySelector('input');
+  radio.addEventListener('change', ()=>{
+    document.querySelectorAll('#opGrid .chip').forEach(el=> el.classList.remove('checked'));
+    label.classList.add('checked');
+    renderPreview();
+  });
+  opGrid.appendChild(label);
+});
+
+const levelSlider = document.getElementById('levelSlider');
+const levelValueEl = document.getElementById('levelValue');
+levelSlider.addEventListener('input', ()=>{
+  levelValueEl.textContent = levelSlider.value;
+  renderPreview();
+});
+
+function currentOp(){
+  const sel = document.querySelector('#opGrid input:checked');
+  return sel ? sel.value : 'add';
+}
+
+function renderPreview(){
+  const op = currentOp();
+  const level = parseInt(levelSlider.value, 10);
+  const box = document.getElementById('previewBox');
+  box.innerHTML = '';
+  const opsToShow = op === 'all' ? ['add','sub','mul','div'] : [op];
+  const compact = op === 'all' && level === 4;
+  opsToShow.forEach(o=>{
+    const chip = document.createElement('div');
+    chip.className = 'preview-chip';
+    if(compact) chip.style.fontSize = '11px';
+    chip.textContent = GENERATORS[o](level);
+    box.appendChild(chip);
+  });
+}
+renderPreview();
+
+const pageParams = new URLSearchParams(window.location.search);
+document.getElementById('backTopicsLink').href = 'math.html?duration=' + (pageParams.get('duration') || '3');
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  const op = currentOp();
+  const level = levelSlider.value;
+  const existingParams = new URLSearchParams(window.location.search);
+  const duration = existingParams.get('duration') || '3';
+  const params = new URLSearchParams({ op, level, duration });
+  window.location.href = 'training-mental.html?' + params.toString();
+});
 </script>
 <script>
 (function(){

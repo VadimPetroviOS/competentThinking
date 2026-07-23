@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Тренажёр по математике</title>
+<title>Таблица лидеров — Тренажёр по математике</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <style>
@@ -194,43 +194,77 @@
   .back-link { text-align: center; font-size: 11.5px; color: var(--muted); text-decoration: none; display: block; }
   .back-link:hover { color: var(--ink); }
 
-  body{ overflow:hidden; cursor:pointer; }
-  .splash-stage{
-    position:relative; z-index:1; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:22px;
+  .lb-row{
+    display:flex; align-items:center; gap:12px; padding:10px 12px;
+    border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.03);
   }
-  .logo-wrap{
-    position:relative; width:220px; height:220px;
-    opacity:0; transform:scale(.05);
-    animation: approach 2s cubic-bezier(.15,.6,.25,1) forwards;
+  .lb-row.me{ border-color:var(--accent); background:rgba(255,180,84,.08); }
+  .lb-rank{
+    width:26px; text-align:center; font-family:ui-monospace,monospace; font-weight:700;
+    color:var(--muted); flex-shrink:0;
   }
-  .logo-wrap img{ width:100%; height:100%; display:block; }
-  @keyframes approach{
-    0%{ opacity:0; transform:scale(.05); }
-    12%{ opacity:1; }
-    100%{ opacity:1; transform:scale(1); }
-  }
+  .lb-rank.top1{ color:#FFD54A; } .lb-rank.top2{ color:#D9D9E6; } .lb-rank.top3{ color:#D69A5C; }
+  .lb-name{ flex:1; font-size:14px; color:var(--ink); }
+  .lb-points{ font-family:ui-monospace,monospace; font-weight:700; color:var(--accent); }
+  .lb-list{ display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow-y:auto; }
+  .lb-empty{ text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas><div class="nebula"></div>
-<div class="splash-stage">
-  <div class="logo-wrap" id="logoWrap">
-    <img src="logo.png" alt="">
+<div class="stage">
+  <div class="panel" style="max-width:400px;">
+    <h1 class="title">Таблица <span>лидеров</span></h1>
+    <p class="subtitle">Очки — за каждую завершённую попытку экзамена</p>
+
+    <div class="lb-list" id="lbList">
+      <p class="lb-empty">Загрузка…</p>
+    </div>
+
+    <a class="back-link" href="levels.html" style="margin-top:4px;">← К уровням</a>
   </div>
 </div>
 
 <script>
-let navigated = false;
-async function goNext(){
-  if(navigated) return;
-  navigated = true;
+(async function(){
   const session = await sbGetSession();
-  window.location.href = session ? 'levels.html' : 'login.html';
-}
-document.body.addEventListener('click', goNext);
-setTimeout(goNext, 2600);
+  if(!session){ window.location.href = 'login.html'; return; }
+
+  let myName = null;
+  try{
+    const { data: profile } = await window.sb.rpc('get_my_profile');
+    const p = Array.isArray(profile) ? profile[0] : profile;
+    myName = p ? p.username : null;
+  } catch(e){ /* ignore, just skip highlighting */ }
+
+  const listEl = document.getElementById('lbList');
+  try{
+    const { data, error } = await window.sb.from('leaderboard').select('*').limit(100);
+    if(error) throw error;
+
+    if(!data || data.length === 0){
+      listEl.innerHTML = '<p class="lb-empty">Пока никто не набрал очков.</p>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    data.forEach((row, i)=>{
+      const rank = i + 1;
+      const div = document.createElement('div');
+      div.className = 'lb-row' + (row.display_name === myName ? ' me' : '');
+      const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+      div.innerHTML = `
+        <div class="lb-rank ${rankClass}">${rank}</div>
+        <div class="lb-name">${row.display_name}</div>
+        <div class="lb-points">${row.points}</div>
+      `;
+      listEl.appendChild(div);
+    });
+  } catch(e){
+    console.error(e);
+    listEl.innerHTML = '<p class="lb-empty">Не удалось загрузить таблицу лидеров.</p>';
+  }
+})();
 </script>
 <script>
 (function(){

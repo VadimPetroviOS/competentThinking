@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0A0A1C">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Тренажёр по математике</title>
+<title>Вход — Тренажёр по математике</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <style>
@@ -194,43 +194,90 @@
   .back-link { text-align: center; font-size: 11.5px; color: var(--muted); text-decoration: none; display: block; }
   .back-link:hover { color: var(--ink); }
 
-  body{ overflow:hidden; cursor:pointer; }
-  .splash-stage{
-    position:relative; z-index:1; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:22px;
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:12px; font-weight:700; color:var(--ink); letter-spacing:.02em; }
+  .field input{
+    font: inherit; font-size:15px; color:var(--ink); background:rgba(0,0,0,.3);
+    border:1px solid var(--line); border-radius:10px; padding:12px 14px; outline:none;
   }
-  .logo-wrap{
-    position:relative; width:220px; height:220px;
-    opacity:0; transform:scale(.05);
-    animation: approach 2s cubic-bezier(.15,.6,.25,1) forwards;
-  }
-  .logo-wrap img{ width:100%; height:100%; display:block; }
-  @keyframes approach{
-    0%{ opacity:0; transform:scale(.05); }
-    12%{ opacity:1; }
-    100%{ opacity:1; transform:scale(1); }
-  }
+  .field input:focus{ border-color:var(--accent); }
+  .auth-error{ color:var(--bad); font-size:12.5px; text-align:center; min-height:16px; }
+  .auth-links{ display:flex; justify-content:space-between; font-size:12px; }
+  .auth-links a{ color:var(--muted); text-decoration:none; }
+  .auth-links a:hover{ color:var(--ink); }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas><div class="nebula"></div>
-<div class="splash-stage">
-  <div class="logo-wrap" id="logoWrap">
-    <img src="logo.png" alt="">
+<div class="stage">
+  <div class="panel" style="max-width:360px;">
+    <h1 class="title">Вход в <span>тренажёр</span></h1>
+    <p class="subtitle">Войди, чтобы продолжить обучение</p>
+
+    <div class="field">
+      <label for="username">Имя пользователя</label>
+      <input type="text" id="username" autocomplete="username" placeholder="Твоё имя" maxlength="16">
+    </div>
+    <div class="field">
+      <label for="password">Пароль</label>
+      <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" maxlength="16">
+    </div>
+
+    <button class="cta" id="loginBtn">Войти ▶</button>
+    <div class="auth-error" id="authError"></div>
+
+    <div class="auth-links">
+      <a href="register.html">Нет аккаунта? Зарегистрироваться</a>
+      <a href="forgot-password.html">Забыли пароль?</a>
+    </div>
   </div>
 </div>
 
 <script>
-let navigated = false;
-async function goNext(){
-  if(navigated) return;
-  navigated = true;
+(async function(){
   const session = await sbGetSession();
-  window.location.href = session ? 'levels.html' : 'login.html';
+  if(session){ window.location.href = 'levels.html'; }
+})();
+
+const usernameEl = document.getElementById('username');
+const passwordEl = document.getElementById('password');
+const errorEl = document.getElementById('authError');
+const loginBtn = document.getElementById('loginBtn');
+
+async function doLogin(){
+  errorEl.textContent = '';
+  const username = usernameEl.value.trim();
+  const password = passwordEl.value;
+  if(!username || !password){ errorEl.textContent = 'Заполни имя и пароль.'; return; }
+
+  loginBtn.disabled = true; loginBtn.textContent = 'Входим…';
+
+  const { data: profile, error: lookupError } = await window.sb
+    .from('profiles')
+    .select('email')
+    .ilike('username', username)
+    .maybeSingle();
+
+  if(lookupError || !profile){
+    loginBtn.disabled = false; loginBtn.textContent = 'Войти ▶';
+    errorEl.textContent = 'Пользователь с таким именем не найден.';
+    return;
+  }
+
+  const { error } = await window.sb.auth.signInWithPassword({ email: profile.email, password });
+  loginBtn.disabled = false; loginBtn.textContent = 'Войти ▶';
+
+  if(error){
+    errorEl.textContent = error.message.includes('Invalid login')
+      ? 'Неверное имя или пароль.'
+      : 'Ошибка входа: ' + error.message;
+    return;
+  }
+  window.location.href = 'levels.html';
 }
-document.body.addEventListener('click', goNext);
-setTimeout(goNext, 2600);
+
+loginBtn.addEventListener('click', doLogin);
+passwordEl.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 </script>
 <script>
 (function(){

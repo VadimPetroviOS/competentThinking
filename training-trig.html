@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0A1C">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Тренировка: Тригонометрия</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<style>
+  :root {
+    --void: #0A0A1C;
+    --void-2: #150F30;
+    --nebula: #3A2166;
+    --panel: rgba(20, 16, 42, 0.6);
+    --panel-solid: #171233;
+    --line: rgba(255,255,255,.12);
+    --ink: #F3F1FF;
+    --muted: #A79FC9;
+    --accent: #FFB454;
+    --accent-ink: #3D2400;
+    --good: #6FDFA6;
+    --good-bg: rgba(111,223,166,.14);
+    --bad: #FF6E7A;
+    --bad-bg: rgba(255,110,122,.16);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100%;
+    background: var(--void);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+  }
+  #stars { position: fixed; inset: 0; z-index: 0; display: block; }
+  .nebula {
+    position: fixed; inset: -10%; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(38% 30% at 18% 22%, rgba(122,90,220,.35), transparent 60%),
+      radial-gradient(45% 35% at 82% 78%, rgba(255,140,90,.14), transparent 60%),
+      radial-gradient(30% 25% at 75% 15%, rgba(90,170,220,.20), transparent 60%),
+      linear-gradient(180deg, var(--void) 0%, var(--void-2) 55%, var(--void) 100%);
+    filter: blur(2px);
+  }
+  .stage {
+    position: relative; z-index: 1; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 28px 16px;
+  }
+  .panel {
+    width: 100%; max-width: 460px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 22px;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -25px rgba(0,0,0,.7);
+    padding: 26px 22px 24px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  h1.title {
+    font-family: "Century Gothic", "Futura", "Trebuchet MS", ui-sans-serif, sans-serif;
+    text-align: center; text-transform: uppercase; letter-spacing: .04em;
+    font-size: 18px; margin: 0 0 4px; color: var(--ink);
+  }
+  h1.title span { color: var(--accent); }
+  .subtitle { text-align: center; font-size: 12px; color: var(--muted); margin: -8px 0 4px; }
+
+  .cta {
+    font: inherit; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    font-size: 15px; color: var(--accent-ink);
+    background: linear-gradient(180deg, #FFD98E, var(--accent));
+    border: none; border-radius: 14px; padding: 15px 18px; cursor: pointer;
+    box-shadow: 0 10px 24px -10px rgba(255,180,84,.6), 0 1px 0 rgba(255,255,255,.4) inset;
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  .cta:hover { transform: translateY(-1px); }
+  .cta:active { transform: translateY(0px) scale(.99); }
+  .cta.secondary {
+    background: rgba(255,255,255,.06); color: var(--ink); box-shadow: none;
+    border: 1px solid var(--line); text-decoration: none; text-align: center; display: block;
+  }
+  .cta.danger { background: var(--bad-bg); color: var(--bad); box-shadow: none; border: 1px solid var(--bad); }
+
+  .hud { display: flex; justify-content: space-between; align-items: flex-end; }
+  .hud-block { display: flex; flex-direction: column; gap: 2px; }
+  .hud-block.right { align-items: flex-end; }
+  .hud-label { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .hud-value {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+    font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .hud-value.timer-warn { color: var(--bad); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+
+  .topic-badge {
+    text-align: center; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin: 0;
+  }
+  .question {
+    text-align: center; font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+    font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1.5; margin: 4px 0;
+  }
+  .instr { text-align: center; font-size: 12.5px; color: var(--muted); margin: -6px 0 2px; }
+
+  .choice-row { display: flex; flex-direction: column; gap: 10px; }
+
+  .readout {
+    position: relative;
+    background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 16px; text-align: center;
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .readout input {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-family: inherit; font-size: 22px; font-weight: 600; color: var(--ink);
+    text-align: center;
+  }
+  .readout input::placeholder { color: var(--muted); }
+  .readout.flash-good { border-color: var(--good); box-shadow: 0 0 0 3px var(--good-bg); }
+  .readout.flash-bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
+
+  .hint { text-align: center; font-size: 11px; color: var(--muted); margin: 0; }
+
+  .feedback {
+    min-height: 20px; text-align: center; font-size: 13.5px; font-weight: 700; letter-spacing: .02em;
+  }
+  .feedback.good { color: var(--good); }
+  .feedback.bad { color: var(--bad); }
+
+  .keypad-extra { display: flex; gap: 8px; }
+  .keypad-extra button {
+    flex: 1; font-family: ui-monospace, "SF Mono", monospace; font-size: 16px; font-weight: 600;
+    color: var(--muted); background: rgba(255,255,255,.04); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 0; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .keypad-extra button:hover { background: rgba(255,255,255,.09); color: var(--ink); }
+  .keypad-extra button:active { transform: scale(.96); }
+
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .keypad button {
+    font-family: ui-monospace, "SF Mono", monospace; font-size: 19px; font-weight: 600;
+    color: var(--ink); background: rgba(255,255,255,.05); border: 1px solid var(--line);
+    border-radius: 12px; padding: 13px 0; cursor: pointer;
+    transition: background .1s ease, transform .05s ease;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .keypad button:hover { background: rgba(255,255,255,.1); }
+  .keypad button:active { transform: scale(.96); }
+  .keypad button[data-k="back"] { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 20px; }
+
+  .end-badge {
+    width: 60px; height: 60px; margin: 4px auto 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: ui-monospace, monospace; font-size: 24px; font-weight: 700;
+  }
+  .end-badge.win { background: var(--good-bg); color: var(--good); box-shadow: 0 0 0 8px rgba(111,223,166,.06); }
+  .end-badge.lose { background: rgba(255,255,255,.06); color: var(--accent); box-shadow: 0 0 0 8px rgba(255,180,84,.06); }
+  .end-title {
+    text-align: center; font-family: "Century Gothic","Futura","Trebuchet MS",ui-sans-serif,sans-serif;
+    text-transform: uppercase; letter-spacing: .03em; font-size: 20px; font-weight: 700; margin: 0;
+  }
+  .end-sub { text-align: center; color: var(--muted); font-size: 13px; margin: -4px 0 0; line-height: 1.5; }
+  .stat-row { display: flex; justify-content: space-around; padding-top: 4px; }
+  .stat { text-align: center; }
+  .stat-label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .stat-value { font-family: ui-monospace, monospace; font-size: 20px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+
+  /* --- settings-specific --- */
+  .op-grid, .topic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  @media (max-width: 380px) { .op-grid, .topic-grid { grid-template-columns: 1fr; } }
+  .chip {
+    display: flex; align-items: center; gap: 8px; padding: 11px 12px;
+    border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: 13px;
+    color: var(--ink); background: rgba(255,255,255,.03);
+    user-select: none; transition: border-color .1s ease, background .1s ease;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip.checked { border-color: var(--accent); background: rgba(255,180,84,.1); }
+  .chip input { accent-color: var(--accent); width: 15px; height: 15px; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .range-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+  .settings-label { font-size: 12.5px; font-weight: 700; color: var(--ink); letter-spacing: .02em; }
+  .settings-error { color: var(--bad); font-size: 12px; text-align: center; min-height: 16px; }
+  .preview-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .preview-chip {
+    font-family: ui-monospace, monospace; font-size: 13.5px; font-weight: 600; color: var(--ink);
+    background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+  }
+  .back-link { text-align: center; font-size: 11.5px; color: var(--muted); text-decoration: none; display: block; }
+  .back-link:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas><div class="nebula"></div>
+<div class="stage">
+  <div class="panel" id="trainingView" style="display:none;">
+    <div class="hud">
+      <div class="hud-block">
+        <div class="hud-label">Время</div>
+        <div class="hud-value" id="timerVal">03:00</div>
+      </div>
+      <div class="hud-block right">
+        <div class="hud-label">Верно</div>
+        <div class="hud-value" id="scoreVal">0/0</div>
+      </div>
+    </div>
+
+    <p class="topic-badge">Тригонометрия</p>
+    <div class="instr" id="instrEl">—</div>
+    <div class="question" id="questionEl">—</div>
+
+    <div id="hintBtnWrap" style="text-align:center; display:none;">
+      <button class="cta secondary" id="circleHintBtn" style="padding:8px 18px; font-size:12px;">Подсказка</button>
+    </div>
+
+    <div id="circleHintPanel" style="display:none; position:fixed; inset:0; z-index:50; align-items:center; justify-content:center; padding:20px; background:rgba(5,3,15,.72); backdrop-filter: blur(4px);">
+      <div class="panel" style="max-width:340px; text-align:center; position:relative;">
+        <button id="circleHintClose" style="position:absolute; top:10px; right:12px; background:none; border:none; color:var(--muted); font-size:20px; line-height:1; cursor:pointer; padding:4px;">✕</button>
+        <div style="font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em;">Единичная окружность</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+          <div>
+            <div style="font-size:10.5px; color:var(--muted); margin-bottom:2px;">Окружность</div>
+            <svg id="hintSvg" viewBox="0 0 200 200" width="140" height="140" style="display:block; margin:0 auto; touch-action:none;">
+              <line x1="6" y1="100" x2="194" y2="100" stroke="var(--line)" stroke-width="1"/>
+              <line x1="100" y1="6" x2="100" y2="194" stroke="var(--line)" stroke-width="1"/>
+              <circle cx="100" cy="100" r="86" fill="none" stroke="var(--muted)" stroke-width="2"/>
+              <line id="hintRadius" x1="100" y1="100" x2="186" y2="100" stroke="var(--accent)" stroke-width="3"/>
+              <circle id="hintHandle" cx="186" cy="100" r="10" fill="var(--accent)" style="cursor:grab;"/>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:10.5px; color:var(--muted); margin-bottom:2px;">sin(x)</div>
+            <svg id="graphSin" viewBox="0 0 140 90" width="140" height="90" style="display:block; margin:0 auto;">
+              <line x1="8" y1="45" x2="132" y2="45" stroke="var(--line)" stroke-width="1"/>
+              <path id="curveSin" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+              <line id="markerSin" x1="8" y1="8" x2="8" y2="82" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,2"/>
+              <circle id="dotSin" cx="8" cy="45" r="3.5" fill="var(--accent)"/>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:10.5px; color:var(--muted); margin-bottom:2px;">cos(x)</div>
+            <svg id="graphCos" viewBox="0 0 140 90" width="140" height="90" style="display:block; margin:0 auto;">
+              <line x1="8" y1="45" x2="132" y2="45" stroke="var(--line)" stroke-width="1"/>
+              <path id="curveCos" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+              <line id="markerCos" x1="8" y1="8" x2="8" y2="82" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,2"/>
+              <circle id="dotCos" cx="8" cy="45" r="3.5" fill="var(--accent)"/>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:10.5px; color:var(--muted); margin-bottom:2px;">tg(x)</div>
+            <svg id="graphTan" viewBox="0 0 140 90" width="140" height="90" style="display:block; margin:0 auto;">
+              <line x1="8" y1="45" x2="132" y2="45" stroke="var(--line)" stroke-width="1"/>
+              <path id="curveTan" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+              <line id="markerTan" x1="8" y1="8" x2="8" y2="82" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,2"/>
+              <circle id="dotTan" cx="8" cy="45" r="3.5" fill="var(--accent)"/>
+            </svg>
+          </div>
+        </div>
+
+        <div id="hintReadout" style="font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--ink); margin-top:8px; min-height:32px; line-height:1.4; display:flex; align-items:center; justify-content:center;">—</div>
+      </div>
+    </div>
+
+    <div id="choiceControls" class="choice-row" style="display:none;"></div>
+
+    <div id="textControls">
+      <div class="readout" id="readout">
+        <input type="text" id="answerInput" placeholder="ответ" autocomplete="off" inputmode="decimal">
+      </div>
+      <p class="hint" id="hintEl"></p>
+      <div class="keypad-extra" id="keypadExtra" style="margin-top:10px;"></div>
+      <div class="keypad" id="keypad" style="margin-top:8px;">
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k="/">/</button><button data-k="0">0</button><button data-k="back">⌫</button>
+      </div>
+      <button class="cta" id="checkBtn" style="width:100%; margin-top:16px;">Проверить</button>
+    </div>
+
+    <button class="cta danger" id="exitBtn">Завершить</button>
+  </div>
+
+  <div class="panel" id="resultsView" style="display:none; text-align:center;">
+    <div class="end-badge" id="endBadge">★</div>
+    <h1 class="title" id="endTitle">Готово</h1>
+    <p class="end-sub" id="endSub">—</p>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-label">Счёт</div>
+        <div class="stat-value" id="resultBig">0/0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Точность</div>
+        <div class="stat-value" id="resultAcc" style="font-size:14px;">0%</div>
+      </div>
+    </div>
+    <button class="cta" id="retryBtn" style="margin-top:6px;">Пройти ещё раз</button>
+    <a class="back-link" href="math.html" id="backTopicsLink" style="margin-top:8px;">Вернуться к темам</a>
+  </div>
+</div>
+
+<script>
+
+(async function () {
+  const session = await sbGetSession();
+  if(!session){ window.location.href = 'login.html'; }
+})();
+
+function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ [a,b]=[b, a%b]; } return a || 1; }
+function isPrime(n){ if(n<2) return false; for(let i=2;i*i<=n;i++){ if(n%i===0) return false; } return true; }
+function primeFactorize(n){ const f=[]; let num=n,d=2; while(d*d<=num){ while(num%d===0){ f.push(d); num/=d; } d++; } if(num>1) f.push(num); return f; }
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function reduceFrac(num,den){ if(den<0){num=-num;den=-den;} const g=gcd(num,den); return {n:num/g, d:den/g}; }
+function parseFracInput(raw){
+  const s = raw.trim().replace(/\s+/g,'');
+  const m = s.match(/^(-?\d+)(?:\/(\d+))?$/);
+  if(!m) return null;
+  const num = parseInt(m[1],10); const den = m[2] ? parseInt(m[2],10) : 1;
+  if(den===0) return null;
+  return reduceFrac(num, den);
+}
+function fracHTML(num, den, negative){
+  const sign = negative ? '&minus;&nbsp;' : '';
+  if(den === 1) return `${sign}${num}`;
+  return `${sign}${num}/${den}`;
+}
+function parseTrigAnswer(raw){
+  const s = raw.trim().toLowerCase().replace(/\s+/g,'').replace(',', '.');
+  if(!s) return null;
+  let m;
+  if((m = s.match(/^-?\d+(\.\d+)?$/))) return parseFloat(s);
+  if((m = s.match(/^(-?)(\d+)\/(\d+)$/))) return (m[1]==='-'?-1:1) * parseInt(m[2],10)/parseInt(m[3],10);
+  if((m = s.match(/^(-?)(?:√|sqrt)\(?(\d+)\)?(?:\/(\d+))?$/))){
+    const sign = m[1]==='-' ? -1 : 1;
+    const val = Math.sqrt(parseInt(m[2],10));
+    const den = m[3] ? parseInt(m[3],10) : 1;
+    return sign*val/den;
+  }
+  return null;
+}
+const PYTH_TRIPLES = [[3,4,5],[5,12,13],[8,15,17],[7,24,25],[20,21,29],[9,40,41]];
+const CIRCLE_VALUES = {
+  sin:{0:0,30:0.5,45:Math.SQRT2/2,60:Math.sqrt(3)/2,90:1},
+  cos:{0:1,30:Math.sqrt(3)/2,45:Math.SQRT2/2,60:0.5,90:0},
+  tan:{0:0,30:Math.sqrt(3)/3,45:1,60:Math.sqrt(3)},
+};
+const CIRCLE_LABELS = {
+  sin:{0:'0',30:'1/2',45:'√2/2',60:'√3/2',90:'1'},
+  cos:{0:'1',30:'√3/2',45:'√2/2',60:'1/2',90:'0'},
+  tan:{0:'0',30:'√3/3',45:'1',60:'√3'},
+};
+
+
+/* ---------- topic-specific problem generator ---------- */
+
+function triangleSVG(opp, adj, hyp){
+  return `
+<svg viewBox="0 0 260 220" width="180" height="152" style="display:block; margin:4px auto 0;">
+  <polygon points="40,190 40,30 230,190" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 40 190 L 58 190 L 58 172 L 40 172" fill="none" stroke="var(--ink)" stroke-width="3"/>
+  <path d="M 40 30 L 40 56 A 26 26 0 0 1 60 47 Z" fill="var(--bad)" stroke="var(--bad)"/>
+  <text x="16" y="115" font-family="ui-monospace, monospace" font-size="22" font-weight="700" fill="var(--ink)" text-anchor="middle">${adj}</text>
+  <text x="135" y="215" font-family="ui-monospace, monospace" font-size="22" font-weight="700" fill="var(--ink)" text-anchor="middle">${opp}</text>
+  <text x="150" y="100" font-family="ui-monospace, monospace" font-size="22" font-weight="700" fill="var(--ink)" text-anchor="middle" transform="rotate(40 150 100)">${hyp}</text>
+</svg>`;
+}
+
+function genProblem(){
+  if(Math.random()<0.5){
+    const [l1,l2,hypBase]=PYTH_TRIPLES[randInt(0,PYTH_TRIPLES.length-1)];
+    const k=randInt(1,3); const opp=l1*k, adj=l2*k, hyp=hypBase*k;
+    const func=['sin','cos','tan'][randInt(0,2)];
+    let num,den,label;
+    if(func==='sin'){num=opp;den=hyp;label='sin(α)';}
+    else if(func==='cos'){num=adj;den=hyp;label='cos(α)';}
+    else {num=opp;den=adj;label='tg(α)';}
+    const reduced=reduceFrac(num,den);
+    return { instr:'Найди отношение сторон',
+      display: triangleSVG(opp, adj, hyp) + `<div style="margin-top:8px; font-size:20px; font-weight:700;">Найди ${label}</div>`,
+      kind:'text', placeholder:'напр. 3/5',
+      check:(raw)=>{ const parsed=parseFracInput(raw); return parsed && parsed.n===reduced.n && parsed.d===reduced.d; },
+      correctStr: reduced.d===1?`${reduced.n}`:`${reduced.n}/${reduced.d}` };
+  } else {
+    const func=['sin','cos','tan'][randInt(0,2)];
+    const angles = func==='tan'?[0,30,45,60]:[0,30,45,60,90];
+    const angle=angles[randInt(0,angles.length-1)];
+    const funcLabel = func==='tan'?'tg':func;
+    const answerVal=CIRCLE_VALUES[func][angle], answerLabel=CIRCLE_LABELS[func][angle];
+    return { instr:'Найди значение', display:`${funcLabel}(${angle}°) = ?`, kind:'text',
+      placeholder:'напр. 1/2', hint:'Дробь или с корнем, например 1/2 или √3/2.',
+      showHint:true, hintAngle:angle,
+      check:(raw)=>{ const v=parseTrigAnswer(raw); return v!==null && Math.abs(v-answerVal)<0.01; }, correctStr: answerLabel };
+  }
+}
+
+/* ---------- session runner ---------- */
+
+const params = new URLSearchParams(window.location.search);
+const durationParam = params.get('duration');
+const durationSec = Math.max(1, parseInt(durationParam || '3', 10)) * 60;
+
+let timeLeft = durationSec;
+let timerId = null;
+let currentProblem = null;
+const stats = { correct:0, total:0 };
+
+const trainingView = document.getElementById('trainingView');
+const resultsView = document.getElementById('resultsView');
+const timerEl = document.getElementById('timerVal');
+const scoreEl = document.getElementById('scoreVal');
+const instrEl = document.getElementById('instrEl');
+const questionEl = document.getElementById('questionEl');
+const choiceControls = document.getElementById('choiceControls');
+const textControls = document.getElementById('textControls');
+const answerInput = document.getElementById('answerInput');
+const hintEl = document.getElementById('hintEl');
+const readoutEl = document.getElementById('readout');
+const keypadExtra = document.getElementById('keypadExtra');
+const keypad = document.getElementById('keypad');
+
+function renderTimer(){
+  const m = Math.floor(timeLeft/60), s = timeLeft%60;
+  timerEl.textContent = m + ':' + (s<10?'0':'') + s;
+  timerEl.classList.toggle('timer-warn', timeLeft <= 10);
+}
+function renderScore(){ scoreEl.textContent = stats.correct + '/' + stats.total; }
+
+const EXTRA_KEYS = ["√2","√3","."];
+function buildKeypad(){
+  if(EXTRA_KEYS.length){
+    keypadExtra.style.display = 'flex';
+    keypadExtra.innerHTML = '';
+    EXTRA_KEYS.forEach(k=>{
+      const b = document.createElement('button');
+      b.textContent = k; b.dataset.k = k;
+      keypadExtra.appendChild(b);
+    });
+  } else {
+    keypadExtra.style.display = 'none';
+  }
+}
+buildKeypad();
+
+function pressKey(k){
+  if(!currentProblem) return;
+  if(k === 'back'){ answerInput.value = answerInput.value.slice(0,-1); }
+  else { answerInput.value += k; }
+}
+keypad.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-k]');
+  if(btn) pressKey(btn.dataset.k);
+});
+keypadExtra.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-k]');
+  if(btn) pressKey(btn.dataset.k);
+});
+
+/* ---------- unit circle hint widget ---------- */
+const hintBtnWrap = document.getElementById('hintBtnWrap');
+const circleHintBtn = document.getElementById('circleHintBtn');
+const circleHintPanel = document.getElementById('circleHintPanel');
+const hintSvg = document.getElementById('hintSvg');
+const hintRadius = document.getElementById('hintRadius');
+const hintHandle = document.getElementById('hintHandle');
+const hintReadout = document.getElementById('hintReadout');
+
+const CIRCLE_CX = 100, CIRCLE_CY = 100, CIRCLE_R = 86;
+
+/* --- small sin/cos/tan graphs, synced with the circle handle --- */
+const GRAPH_PAD = 8, GRAPH_W = 140, GRAPH_H = 90;
+const PLOT_W = GRAPH_W - GRAPH_PAD*2, PLOT_H = GRAPH_H - GRAPH_PAD*2;
+function angleToGx(deg, xMin=0, xMax=360){ return GRAPH_PAD + ((deg-xMin)/(xMax-xMin))*PLOT_W; }
+function valToGy(val, yMin, yMax){ return GRAPH_PAD + (1 - (val-yMin)/(yMax-yMin)) * PLOT_H; }
+
+function buildCurvePath(fn, yMin, yMax, clip, xMin=0, xMax=360){
+  let d = ''; let penDown = false;
+  for(let deg=xMin; deg<=xMax; deg+=1){
+    const rad = deg*Math.PI/180;
+    const val = fn(rad);
+    if(clip && Math.abs(val) > clip){ penDown = false; continue; }
+    const x = angleToGx(deg, xMin, xMax), y = valToGy(val, yMin, yMax);
+    d += (penDown ? 'L ' : 'M ') + x + ' ' + y + ' ';
+    penDown = true;
+  }
+  return d;
+}
+document.getElementById('curveSin').setAttribute('d', buildCurvePath(Math.sin, -1.2, 1.2, null));
+document.getElementById('curveCos').setAttribute('d', buildCurvePath(Math.cos, -1.2, 1.2, null));
+document.getElementById('curveTan').setAttribute('d', buildCurvePath(Math.tan, -20, 20, 20, -90, 90));
+
+const markerSin = document.getElementById('markerSin'), dotSin = document.getElementById('dotSin');
+const markerCos = document.getElementById('markerCos'), dotCos = document.getElementById('dotCos');
+const markerTan = document.getElementById('markerTan'), dotTan = document.getElementById('dotTan');
+
+function updateGraphs(deg, rad){
+  const gx = angleToGx(deg);
+  const sinV = Math.sin(rad), cosV = Math.cos(rad), tanV = Math.tan(rad);
+
+  markerSin.setAttribute('x1', gx); markerSin.setAttribute('x2', gx);
+  dotSin.setAttribute('cx', gx); dotSin.setAttribute('cy', valToGy(sinV, -1.2, 1.2));
+
+  markerCos.setAttribute('x1', gx); markerCos.setAttribute('x2', gx);
+  dotCos.setAttribute('cx', gx); dotCos.setAttribute('cy', valToGy(cosV, -1.2, 1.2));
+
+  const tanClamped = Math.max(-20, Math.min(20, tanV));
+  const rawMod = deg % 180;
+  const tanDeg = rawMod > 90 ? rawMod - 180 : rawMod;
+  const gxTan = angleToGx(tanDeg, -90, 90);
+  markerTan.setAttribute('x1', gxTan); markerTan.setAttribute('x2', gxTan);
+  dotTan.setAttribute('cx', gxTan); dotTan.setAttribute('cy', valToGy(tanClamped, -20, 20));
+  dotTan.style.display = Math.abs(cosV) < 0.02 ? 'none' : '';
+}
+
+function setHintAngle(deg){
+  const norm = ((deg % 360) + 360) % 360;
+  const rad = norm * Math.PI / 180;
+  const x = CIRCLE_CX + CIRCLE_R * Math.cos(rad);
+  const y = CIRCLE_CY - CIRCLE_R * Math.sin(rad);
+  hintRadius.setAttribute('x2', x); hintRadius.setAttribute('y2', y);
+  hintHandle.setAttribute('cx', x); hintHandle.setAttribute('cy', y);
+  updateGraphs(norm, rad);
+
+  const sinV = Math.sin(rad), cosV = Math.cos(rad);
+  const tanStr = Math.abs(cosV) < 0.01 ? '—' : (Math.tan(rad)).toFixed(2);
+  hintReadout.textContent = `Угол: ${Math.round(norm)}° · sin=${sinV.toFixed(2)} cos=${cosV.toFixed(2)} tan=${tanStr}`;
+}
+
+circleHintBtn.addEventListener('click', ()=>{
+  circleHintPanel.style.display = 'flex';
+});
+document.getElementById('circleHintClose').addEventListener('click', ()=>{
+  circleHintPanel.style.display = 'none';
+});
+circleHintPanel.addEventListener('click', (e)=>{
+  if(e.target === circleHintPanel) circleHintPanel.style.display = 'none';
+});
+
+let dragging = false;
+function angleFromPointer(clientX, clientY){
+  const rect = hintSvg.getBoundingClientRect();
+  const svgX = (clientX - rect.left) / rect.width * 200;
+  const svgY = (clientY - rect.top) / rect.height * 200;
+  const rad = Math.atan2(-(svgY - CIRCLE_CY), svgX - CIRCLE_CX);
+  return rad * 180 / Math.PI;
+}
+function startDrag(e){
+  dragging = true;
+  hintHandle.style.cursor = 'grabbing';
+  moveDrag(e);
+}
+function moveDrag(e){
+  if(!dragging) return;
+  const point = e.touches ? e.touches[0] : e;
+  setHintAngle(angleFromPointer(point.clientX, point.clientY));
+  e.preventDefault();
+}
+function endDrag(){ dragging = false; hintHandle.style.cursor = 'grab'; }
+
+hintHandle.addEventListener('pointerdown', startDrag);
+hintSvg.addEventListener('pointermove', moveDrag);
+window.addEventListener('pointerup', endDrag);
+hintSvg.addEventListener('click', (e)=>{
+  if(dragging) return;
+  setHintAngle(angleFromPointer(e.clientX, e.clientY));
+});
+
+function nextProblem(){
+  const problem = genProblem();
+  currentProblem = problem;
+  instrEl.textContent = problem.instr;
+  questionEl.innerHTML = problem.display;
+  hintEl.textContent = problem.hint || '';
+  readoutEl.classList.remove('flash-good','flash-bad');
+
+  hintBtnWrap.style.display = problem.showHint ? 'block' : 'none';
+  circleHintPanel.style.display = 'none';
+  if(problem.showHint){
+    setHintAngle(problem.hintAngle);
+  }
+
+  if(problem.kind === 'choice'){
+    choiceControls.style.display = 'flex'; textControls.style.display = 'none';
+    choiceControls.innerHTML = '';
+    problem.choices.forEach(c=>{
+      const btn = document.createElement('button');
+      btn.className = 'cta secondary'; btn.textContent = c.label;
+      btn.addEventListener('click', ()=> submitAnswer(c.value, btn));
+      choiceControls.appendChild(btn);
+    });
+  } else {
+    choiceControls.style.display = 'none'; textControls.style.display = 'block';
+    answerInput.value = ''; answerInput.placeholder = problem.placeholder || 'ответ';
+    answerInput.focus();
+  }
+}
+
+function submitAnswer(rawOrValue, btnEl){
+  if(!currentProblem) return;
+  const correct = currentProblem.check(rawOrValue);
+  stats.total++;
+  if(correct) stats.correct++;
+  renderScore();
+
+  if(btnEl){
+    btnEl.classList.add(correct ? 'flash-good' : 'flash-bad');
+  } else {
+    readoutEl.classList.add(correct ? 'flash-good' : 'flash-bad');
+  }
+  currentProblem = null;
+  setTimeout(()=>{ if(timeLeft > 0) nextProblem(); }, 500);
+}
+
+document.getElementById('checkBtn').addEventListener('click', ()=>{
+  const raw = answerInput.value.trim();
+  if(!raw || !currentProblem) return;
+  submitAnswer(raw);
+});
+answerInput.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('checkBtn').click(); });
+window.addEventListener('keydown', e=>{
+  if(!trainingView || trainingView.style.display === 'none') return;
+  if(document.activeElement === answerInput) return;
+  if(e.key >= '0' && e.key <= '9') pressKey(e.key);
+});
+
+function finish(){
+  if(timerId){ clearInterval(timerId); timerId = null; }
+  trainingView.style.display = 'none';
+  resultsView.style.display = 'flex';
+
+  const acc = stats.total > 0 ? Math.round(stats.correct/stats.total*100) : 0;
+  const correctThreshold = Math.round(9 * minutesUsed * 0.9);
+  const accGood = acc > 90;
+  const countGood = stats.correct > correctThreshold;
+
+  const resultBigEl = document.getElementById('resultBig');
+  const resultAccEl = document.getElementById('resultAcc');
+  resultBigEl.textContent = stats.correct + ' / ' + stats.total;
+  resultAccEl.textContent = 'Точность: ' + acc + '%';
+  resultBigEl.style.color = countGood ? 'var(--good)' : 'var(--bad)';
+  resultAccEl.style.color = accGood ? 'var(--good)' : 'var(--bad)';
+
+  const badge = document.getElementById('endBadge');
+  const title = document.getElementById('endTitle');
+  const sub = document.getElementById('endSub');
+  if(countGood && accGood){
+    badge.className = 'end-badge win'; badge.textContent = '★';
+    title.textContent = 'Отличный результат!';
+    sub.textContent = 'Ты хорошо разобрался с этой темой.';
+  } else {
+    badge.className = 'end-badge lose'; badge.textContent = '●';
+    title.textContent = 'Время вышло';
+    sub.textContent = 'Ещё немного практики — и будет уверенно.';
+  }
+}
+
+document.getElementById('exitBtn').addEventListener('click', finish);
+document.getElementById('retryBtn').addEventListener('click', ()=> window.location.reload());
+
+trainingView.style.display = 'flex';
+renderTimer();
+renderScore();
+nextProblem();
+timerId = setInterval(()=>{
+  timeLeft--;
+  renderTimer();
+  if(timeLeft <= 0) finish();
+}, 1000);
+
+const minutesUsed = Math.max(1, parseInt(durationParam || '3', 10));
+const backTopicsLink = document.getElementById('backTopicsLink');
+if(backTopicsLink) backTopicsLink.href = 'math.html?duration=' + minutesUsed;
+const backMentalLink = document.getElementById('backMentalLink');
+if(backMentalLink) backMentalLink.href = 'settings-mental.html?duration=' + minutesUsed;
+
+</script>
+<script>
+(function(){
+  var canvas = document.getElementById('stars');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var stars = [];
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function resize(){
+    canvas.width = window.innerWidth * devicePixelRatio;
+    canvas.height = window.innerHeight * devicePixelRatio;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    var count = Math.round((window.innerWidth*window.innerHeight)/3800);
+    stars = [];
+    for(var i=0;i<count;i++){
+      stars.push({ x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight,
+        r:Math.random()*1.3+0.3, phase:Math.random()*Math.PI*2, speed:0.4+Math.random()*0.8 });
+    }
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  function draw(t){
+    ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+    for(var i=0;i<stars.length;i++){
+      var s = stars[i];
+      var tw = reduceMotion ? 0.85 : 0.55 + 0.45*Math.sin(t*0.001*s.speed + s.phase);
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(243,241,255,' + (tw*0.9).toFixed(3) + ')';
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+  var startT = null;
+  function loop(t){ if(startT===null) startT=t; draw(t-startT); if(!reduceMotion) requestAnimationFrame(loop); }
+  if(reduceMotion){ draw(0); } else { requestAnimationFrame(loop); }
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
