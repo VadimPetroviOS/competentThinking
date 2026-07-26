@@ -54,6 +54,7 @@
     position: relative;
     z-index: 1;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -251,7 +252,8 @@
   .keypad button:active { transform: scale(.96); }
   .keypad button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .keypad button.wide { grid-column: span 1; }
-  .keypad button.op { color: var(--muted); font-size: 16px; }
+  .keypad button.op { color: var(--ink); }
+  .keypad button.op[data-k="back"] { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 20px; }
 
   /* ---- End screen ---- */
   .end-badge {
@@ -292,6 +294,27 @@
 
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
+  }
+
+  /* ---- Fit small phone screens without scrolling ---- */
+  @media (max-height: 740px) {
+    .stage { padding: 12px 16px; }
+    .panel { padding: 16px 18px 14px; }
+    .screen { gap: 8px; }
+    .hud-value { font-size: 20px; }
+    .porthole { margin-top: 0; }
+    .porthole img { width: 96px; height: 96px; padding: 6px; }
+    .porthole .fallback { font-size: 22px; }
+    .product-name { min-height: 2.1em; font-size: 14px; }
+    .product-price { font-size: 17px; margin-top: -2px; }
+    .product-price .unit { font-size: 14px; }
+    .prompt { margin-top: 0; }
+    .readout { padding: 8px 14px; }
+    .readout .val { font-size: 21px; }
+    .keypad { gap: 6px; }
+    .keypad button { padding: 8px 0; font-size: 17px; }
+    .keypad button.op[data-k="back"] { font-size: 18px; }
+    button.cta { padding: 10px 18px; }
   }
 </style>
 
