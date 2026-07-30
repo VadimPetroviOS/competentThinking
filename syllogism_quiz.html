@@ -47,6 +47,13 @@
     display: flex; align-items: center; justify-content: center; padding: 28px 16px;
   }
 
+  .wrap {
+    width: 100%; max-width: 640px;
+  }
+  @media (min-width: 720px) {
+    .wrap { min-width: 520px; }
+  }
+
   .eyebrow{
     font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
     color: var(--muted); text-align:center; margin: 0 0 10px;
@@ -57,11 +64,15 @@
   }
 
   .panel {
+    position: relative;
     width: 100%; max-width: 640px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -25px rgba(0,0,0,.7);
-    padding: 26px 24px 24px;
+    padding: 34px 24px 24px;
+  }
+  @media (min-width: 720px) {
+    .panel { min-width: 520px; }
   }
 
   .level-toggle{
@@ -80,14 +91,15 @@
 
   .premises{ list-style:none; margin: 0 0 20px; padding:0; }
   .premises li{
-    box-sizing: border-box; height: 36px; padding: 0 0 0 26px; margin: 4px 0;
+    box-sizing: border-box; min-height: 36px; padding: 6px 0 6px 26px; margin: 4px 0;
     position: relative; color: var(--ink);
     display:flex; align-items:center;
     white-space: nowrap; overflow: hidden;
-    font-size: 16px;
+    font-size: 16px; line-height: 1.35;
   }
+  .premises li.wrapped{ white-space: normal; overflow: visible; }
   .premises li::before{
-    content: attr(data-mark); position:absolute; left:0; top:50%; transform: translateY(-50%);
+    content: attr(data-mark); position:absolute; left:0; top:12px;
     font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
     font-size:12px; color: var(--accent);
   }
@@ -96,7 +108,8 @@
     font: inherit; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
     font-size: 14px; color: var(--accent-ink);
     background: linear-gradient(180deg, #FFD98E, var(--accent));
-    border: none; border-radius: 14px; padding: 14px 18px; width: 100%;
+    border: none; border-radius: 14px; padding: 14px 34px; width: auto;
+    display: block; margin: 0 auto;
     cursor: pointer;
     box-shadow: 0 10px 24px -10px rgba(255,180,84,.6), 0 1px 0 rgba(255,255,255,.4) inset;
     transition: transform .1s ease, box-shadow .1s ease;
@@ -169,7 +182,7 @@
   }
 
   .stats{
-    position: fixed; top: 16px; right: 20px; margin:0;
+    position: absolute; top: 14px; right: 18px; margin:0;
     font-size:11px; color: var(--muted); letter-spacing:0.04em; z-index: 2;
   }
   .stats b{ color: var(--ink); }
@@ -182,14 +195,13 @@
 <canvas id="stars"></canvas>
 <div class="nebula"></div>
 
-<div class="stats" id="statsLine"></div>
-
 <div class="stage">
 <div class="wrap">
   <p class="eyebrow">Тренажёр · категорический силлогизм</p>
   <h1>Следует ли вывод?</h1>
 
   <div class="panel">
+    <div class="stats" id="statsLine"></div>
     <div class="level-toggle" id="levelToggle">
       <button class="level-btn" data-level="beginner" id="levelBeginner">Начинающий</button>
       <button class="level-btn" data-level="amateur" id="levelAmateur">Любительский</button>
@@ -1186,12 +1198,17 @@ function buildConclusionText(entry, words){
   let proState = null;
 
   function fitPremiseText(el){
+    el.classList.remove('wrapped');
     el.style.fontSize = '16px';
     let size = 16;
     const minSize = 10.5;
     while(el.scrollWidth > el.clientWidth && size > minSize){
       size -= 0.5;
       el.style.fontSize = size + 'px';
+    }
+    if(el.scrollWidth > el.clientWidth){
+      // still doesn't fit at the smallest readable size — wrap instead of clipping
+      el.classList.add('wrapped');
     }
   }
 
