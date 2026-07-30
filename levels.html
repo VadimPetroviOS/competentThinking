@@ -268,7 +268,8 @@ document.querySelectorAll('.level-node').forEach(node=>{
   });
 });
 
-if(localStorage.getItem('level2Unlocked') === 'true'){
+var TEMP_FORCE_LEVEL2_UNLOCK = true; // временный доступ ко 2 уровню; поставь false, чтобы вернуть гейт по localStorage
+if(TEMP_FORCE_LEVEL2_UNLOCK || localStorage.getItem('level2Unlocked') === 'true'){
   document.getElementById('level2-locked').style.display = 'none';
   document.getElementById('level2-unlocked').style.display = '';
   document.getElementById('line12').setAttribute('stroke', 'var(--accent)');
