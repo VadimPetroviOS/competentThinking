@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажёр силлогизмов</title>
+<style>
+  :root {
+    --void: #0A0A1C;
+    --void-2: #150F30;
+    --nebula: #3A2166;
+    --panel: rgba(20, 16, 42, 0.6);
+    --panel-solid: #171233;
+    --line: rgba(255,255,255,.12);
+    --ink: #F3F1FF;
+    --muted: #A79FC9;
+    --accent: #FFB454;
+    --accent-ink: #3D2400;
+    --good: #6FDFA6;
+    --good-bg: rgba(111,223,166,.14);
+    --bad: #FF6E7A;
+    --bad-bg: rgba(255,110,122,.16);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--void);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+  }
+  #stars { position: fixed; inset: 0; z-index: 0; display: block; }
+  .nebula {
+    position: fixed; inset: -10%; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(38% 30% at 18% 22%, rgba(122,90,220,.35), transparent 60%),
+      radial-gradient(45% 35% at 82% 78%, rgba(255,140,90,.14), transparent 60%),
+      radial-gradient(30% 25% at 75% 15%, rgba(90,170,220,.20), transparent 60%),
+      linear-gradient(180deg, var(--void) 0%, var(--void-2) 55%, var(--void) 100%);
+    filter: blur(2px);
+  }
+
+  .stage {
+    position: relative; z-index: 1; min-height: 100vh; min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center; padding: 28px 16px;
+  }
+
+  .eyebrow{
+    font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted); text-align:center; margin: 0 0 10px;
+  }
+  h1{
+    font-size: clamp(22px, 4.5vw, 28px); font-weight: 700;
+    margin: 0 0 20px; text-align:center; color: var(--ink);
+  }
+
+  .panel {
+    width: 100%; max-width: 640px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -25px rgba(0,0,0,.7);
+    padding: 26px 24px 24px;
+  }
+
+  .level-toggle{
+    display:flex; gap:6px; background: rgba(255,255,255,.04); border:1px solid var(--line);
+    border-radius: 12px; padding: 4px; margin-bottom: 18px;
+  }
+  .level-btn{
+    flex:1; font: inherit; font-size: 11.5px; font-weight: 600; letter-spacing:.02em;
+    padding: 8px 6px; border-radius: 9px; border:none; background: transparent;
+    color: var(--muted); cursor:pointer; transition: background .12s ease, color .12s ease;
+  }
+  .level-btn:hover{ color: var(--ink); }
+  .level-btn.active{ background: var(--accent); color: var(--accent-ink); }
+  .level-btn.locked{ opacity: .38; cursor: not-allowed; }
+  .level-btn.locked:hover{ color: var(--muted); }
+
+  .premises{ list-style:none; margin: 0 0 20px; padding:0; }
+  .premises li{
+    box-sizing: border-box; height: 36px; padding: 0 0 0 26px; margin: 4px 0;
+    position: relative; color: var(--ink);
+    display:flex; align-items:center;
+    white-space: nowrap; overflow: hidden;
+    font-size: 16px;
+  }
+  .premises li::before{
+    content: attr(data-mark); position:absolute; left:0; top:50%; transform: translateY(-50%);
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+    font-size:12px; color: var(--accent);
+  }
+
+  button.cta {
+    font: inherit; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    font-size: 14px; color: var(--accent-ink);
+    background: linear-gradient(180deg, #FFD98E, var(--accent));
+    border: none; border-radius: 14px; padding: 14px 18px; width: 100%;
+    cursor: pointer;
+    box-shadow: 0 10px 24px -10px rgba(255,180,84,.6), 0 1px 0 rgba(255,255,255,.4) inset;
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  button.cta:hover { transform: translateY(-1px); }
+  button.cta:active { transform: translateY(0px) scale(.99); }
+  button.cta:focus-visible { outline: 2px solid #FFF; outline-offset: 2px; }
+
+  button.cta.secondary {
+    background: transparent; color: var(--ink); border: 1px solid var(--line);
+    box-shadow: none; margin-top: 14px;
+  }
+  button.cta.secondary:hover { border-color: var(--accent); }
+
+  .answer{ margin-top: 6px; animation: reveal 0.28s ease both; }
+  @keyframes reveal{ from{ opacity:0; transform: translateY(4px);} to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce){ .answer{ animation:none; } .stamp{ animation:none !important; } }
+
+  .verdict-row{
+    display:flex; align-items:center; gap:12px;
+    padding: 14px 0 16px; border-top: 1px dashed var(--line); margin-top: 4px;
+  }
+
+  .stamp{
+    font-weight:700; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    padding: 5px 10px; border: 2px solid var(--bad); color: var(--bad);
+    background: var(--bad-bg);
+    border-radius: 8px; white-space:nowrap;
+    animation: stampIn 0.32s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  @keyframes stampIn{ from{ opacity:0; transform: scale(1.4);} to{ opacity:1; transform: scale(1);} }
+
+  .verdict-text{ font-size: 16px; }
+  .verdict-text.valid{ color: var(--good); }
+  .verdict-text.invalid{ color: var(--bad); font-style: italic; }
+
+  .carousel{ margin-top: 8px; }
+  .plate{
+    position:relative; background:#FBFAFF; border:1px solid rgba(0,0,0,.08); border-radius: 16px;
+    padding: 10px; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 14px 26px -12px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.6) inset;
+    height: 340px;
+  }
+  .plate svg{ width:100%; height:100%; display:block; margin:0 auto; }
+
+  .legend-overlay{
+    position: absolute; left: 14px; bottom: 6px;
+    background: rgba(255,255,255,.88); border-radius: 8px;
+    padding: 5px 9px; font-size: 11px; font-weight: 700; line-height: 1.5;
+    color: #444; pointer-events: none;
+  }
+
+  .carousel-controls{ display:flex; align-items:center; justify-content:center; gap:14px; margin-top:12px; }
+  .arrow-btn{
+    background: rgba(255,255,255,.05); border:1px solid var(--line); border-radius:50%;
+    width:32px; height:32px; cursor:pointer; color: var(--ink);
+    font-size:15px; display:flex; align-items:center; justify-content:center;
+    transition: background .1s ease;
+  }
+  .arrow-btn:hover{ background: rgba(255,255,255,.1); }
+  .arrow-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .arrow-btn:disabled{ opacity:0.3; cursor:default; }
+
+  .dots{ display:flex; gap:7px; }
+  .dot{ width:7px; height:7px; border-radius:50%; background: rgba(255,255,255,.18); }
+  .dot.active{ background: var(--accent); }
+
+  .plate-caption{
+    font-size: 11px; color: var(--muted); text-align:center; margin-top:8px; letter-spacing:0.03em;
+  }
+
+  .stats{
+    position: fixed; top: 16px; right: 20px; margin:0;
+    font-size:11px; color: var(--muted); letter-spacing:0.04em; z-index: 2;
+  }
+  .stats b{ color: var(--ink); }
+
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div class="nebula"></div>
+
+<div class="stats" id="statsLine"></div>
+
+<div class="stage">
+<div class="wrap">
+  <p class="eyebrow">Тренажёр · категорический силлогизм</p>
+  <h1>Следует ли вывод?</h1>
+
+  <div class="panel">
+    <div class="level-toggle" id="levelToggle">
+      <button class="level-btn" data-level="beginner" id="levelBeginner">Начинающий</button>
+      <button class="level-btn" data-level="amateur" id="levelAmateur">Любительский</button>
+      <button class="level-btn" data-level="professional" id="levelPro">Профессионал</button>
+    </div>
+
+    <ul class="premises">
+      <li data-mark="1." id="premise1"></li>
+      <li data-mark="2." id="premise2"></li>
+    </ul>
+
+    <button class="cta" id="revealBtn">Посмотреть ответ</button>
+
+    <div class="answer hidden" id="answerBlock">
+      <div class="verdict-row">
+        <span class="stamp" id="stamp">Валиден</span>
+        <span class="verdict-text" id="verdictText"></span>
+      </div>
+
+      <div class="carousel" id="carouselWrap">
+        <div class="plate" id="plateWrap">
+          <div id="plateHolder"></div>
+        </div>
+        <div class="carousel-controls" id="carouselControls">
+          <button class="arrow-btn" id="prevBtn" aria-label="Предыдущая диаграмма">‹</button>
+          <div class="dots" id="dotsHolder"></div>
+          <button class="arrow-btn" id="nextBtn" aria-label="Следующая диаграмма">›</button>
+        </div>
+        <div class="plate-caption" id="plateCaption"></div>
+      </div>
+
+      <button class="cta secondary" id="nextQuestionBtn">Следующий вопрос →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+  var canvas = document.getElementById('stars');
+  var ctx = canvas.getContext('2d');
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var stars = [];
+  var devicePixelRatio = window.devicePixelRatio || 1;
+  function resize() {
+    canvas.width = window.innerWidth * devicePixelRatio;
+    canvas.height = window.innerHeight * devicePixelRatio;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    var count = Math.round((window.innerWidth * window.innerHeight) / 3800);
+    stars = [];
+    for (var i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.3 + 0.3,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.4 + Math.random() * 0.8
+      });
+    }
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  function drawStars(t) {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      var tw = reduceMotion ? 0.85 : 0.55 + 0.45 * Math.sin(t * 0.001 * s.speed + s.phase);
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(243,241,255,' + (tw * 0.9).toFixed(3) + ')';
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  var startT = null;
+  function loop(t) {
+    if (startT === null) startT = t;
+    drawStars(t - startT);
+    if (!reduceMotion) requestAnimationFrame(loop);
+  }
+  if (reduceMotion) { drawStars(0); } else { requestAnimationFrame(loop); }
+})();
+</script>
+
+<script>
+window.__QUIZ_ENTRIES__ = 
+[{"id": 1, "code": "AAA", "name": "Barbara", "figure": 1, "premise1": "Все M суть P", "premise2": "Все S суть M", "valid": true, "conclusion": "Все S суть P"}, {"id": 2, "code": "AEA", "name": null, "figure": 1, "premise1": "Все M суть P", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 3, "code": "AII", "name": "Darii", "figure": 1, "premise1": "Все M суть P", "premise2": "Некоторые S суть M", "valid": true, "conclusion": "Некоторые S суть P"}, {"id": 4, "code": "AOA", "name": null, "figure": 1, "premise1": "Все M суть P", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 5, "code": "AAA", "name": null, "figure": 2, "premise1": "Все P суть M", "premise2": "Все S суть M", "valid": false, "conclusion": null}, {"id": 6, "code": "AEE", "name": "Camestres", "figure": 2, "premise1": "Все P суть M", "premise2": "Ни один S не есть M", "valid": true, "conclusion": "Ни один S не есть P"}, {"id": 7, "code": "AIA", "name": null, "figure": 2, "premise1": "Все P суть M", "premise2": "Некоторые S суть M", "valid": false, "conclusion": null}, {"id": 8, "code": "AOO", "name": "Baroco", "figure": 2, "premise1": "Все P суть M", "premise2": "Некоторые S не суть M", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 9, "code": "AAI", "name": "Darapti", "figure": 3, "premise1": "Все M суть P", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S суть P"}, {"id": 10, "code": "AEA", "name": null, "figure": 3, "premise1": "Все M суть P", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 11, "code": "AII", "name": "Datisi", "figure": 3, "premise1": "Все M суть P", "premise2": "Некоторые M суть S", "valid": true, "conclusion": "Некоторые S суть P"}, {"id": 12, "code": "AOA", "name": null, "figure": 3, "premise1": "Все M суть P", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 13, "code": "AAI", "name": "Bramantip", "figure": 4, "premise1": "Все P суть M", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S суть P"}, {"id": 14, "code": "AEE", "name": "Camenes", "figure": 4, "premise1": "Все P суть M", "premise2": "Ни один M не есть S", "valid": true, "conclusion": "Ни один S не есть P"}, {"id": 15, "code": "AIA", "name": null, "figure": 4, "premise1": "Все P суть M", "premise2": "Некоторые M суть S", "valid": false, "conclusion": null}, {"id": 16, "code": "AOA", "name": null, "figure": 4, "premise1": "Все P суть M", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 17, "code": "EAE", "name": "Celarent", "figure": 1, "premise1": "Ни один M не есть P", "premise2": "Все S суть M", "valid": true, "conclusion": "Ни один S не есть P"}, {"id": 18, "code": "EEA", "name": null, "figure": 1, "premise1": "Ни один M не есть P", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 19, "code": "EIO", "name": "Ferio", "figure": 1, "premise1": "Ни один M не есть P", "premise2": "Некоторые S суть M", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 20, "code": "EOA", "name": null, "figure": 1, "premise1": "Ни один M не есть P", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 21, "code": "EAE", "name": "Cesare", "figure": 2, "premise1": "Ни один P не есть M", "premise2": "Все S суть M", "valid": true, "conclusion": "Ни один S не есть P"}, {"id": 22, "code": "EEA", "name": null, "figure": 2, "premise1": "Ни один P не есть M", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 23, "code": "EIO", "name": "Festino", "figure": 2, "premise1": "Ни один P не есть M", "premise2": "Некоторые S суть M", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 24, "code": "EOA", "name": null, "figure": 2, "premise1": "Ни один P не есть M", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 25, "code": "EAO", "name": "Felapton", "figure": 3, "premise1": "Ни один M не есть P", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 26, "code": "EEA", "name": null, "figure": 3, "premise1": "Ни один M не есть P", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 27, "code": "EIO", "name": "Ferison", "figure": 3, "premise1": "Ни один M не есть P", "premise2": "Некоторые M суть S", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 28, "code": "EOA", "name": null, "figure": 3, "premise1": "Ни один M не есть P", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 29, "code": "EAO", "name": "Fesapo", "figure": 4, "premise1": "Ни один P не есть M", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 30, "code": "EEA", "name": null, "figure": 4, "premise1": "Ни один P не есть M", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 31, "code": "EIO", "name": "Fresison", "figure": 4, "premise1": "Ни один P не есть M", "premise2": "Некоторые M суть S", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 32, "code": "EOA", "name": null, "figure": 4, "premise1": "Ни один P не есть M", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 33, "code": "IAA", "name": null, "figure": 1, "premise1": "Некоторые M суть P", "premise2": "Все S суть M", "valid": false, "conclusion": null}, {"id": 34, "code": "IEA", "name": null, "figure": 1, "premise1": "Некоторые M суть P", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 35, "code": "IIA", "name": null, "figure": 1, "premise1": "Некоторые M суть P", "premise2": "Некоторые S суть M", "valid": false, "conclusion": null}, {"id": 36, "code": "IOA", "name": null, "figure": 1, "premise1": "Некоторые M суть P", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 37, "code": "IAA", "name": null, "figure": 2, "premise1": "Некоторые P суть M", "premise2": "Все S суть M", "valid": false, "conclusion": null}, {"id": 38, "code": "IEA", "name": null, "figure": 2, "premise1": "Некоторые P суть M", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 39, "code": "IIA", "name": null, "figure": 2, "premise1": "Некоторые P суть M", "premise2": "Некоторые S суть M", "valid": false, "conclusion": null}, {"id": 40, "code": "IOA", "name": null, "figure": 2, "premise1": "Некоторые P суть M", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 41, "code": "IAI", "name": "Disamis", "figure": 3, "premise1": "Некоторые M суть P", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S суть P"}, {"id": 42, "code": "IEA", "name": null, "figure": 3, "premise1": "Некоторые M суть P", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 43, "code": "IIA", "name": null, "figure": 3, "premise1": "Некоторые M суть P", "premise2": "Некоторые M суть S", "valid": false, "conclusion": null}, {"id": 44, "code": "IOA", "name": null, "figure": 3, "premise1": "Некоторые M суть P", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 45, "code": "IAI", "name": "Dimaris", "figure": 4, "premise1": "Некоторые P суть M", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S суть P"}, {"id": 46, "code": "IEA", "name": null, "figure": 4, "premise1": "Некоторые P суть M", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 47, "code": "IIA", "name": null, "figure": 4, "premise1": "Некоторые P суть M", "premise2": "Некоторые M суть S", "valid": false, "conclusion": null}, {"id": 48, "code": "IOA", "name": null, "figure": 4, "premise1": "Некоторые P суть M", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 49, "code": "OAA", "name": null, "figure": 1, "premise1": "Некоторые M не суть P", "premise2": "Все S суть M", "valid": false, "conclusion": null}, {"id": 50, "code": "OEA", "name": null, "figure": 1, "premise1": "Некоторые M не суть P", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 51, "code": "OIA", "name": null, "figure": 1, "premise1": "Некоторые M не суть P", "premise2": "Некоторые S суть M", "valid": false, "conclusion": null}, {"id": 52, "code": "OOA", "name": null, "figure": 1, "premise1": "Некоторые M не суть P", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 53, "code": "OAA", "name": null, "figure": 2, "premise1": "Некоторые P не суть M", "premise2": "Все S суть M", "valid": false, "conclusion": null}, {"id": 54, "code": "OEA", "name": null, "figure": 2, "premise1": "Некоторые P не суть M", "premise2": "Ни один S не есть M", "valid": false, "conclusion": null}, {"id": 55, "code": "OIA", "name": null, "figure": 2, "premise1": "Некоторые P не суть M", "premise2": "Некоторые S суть M", "valid": false, "conclusion": null}, {"id": 56, "code": "OOA", "name": null, "figure": 2, "premise1": "Некоторые P не суть M", "premise2": "Некоторые S не суть M", "valid": false, "conclusion": null}, {"id": 57, "code": "OAO", "name": "Bocardo", "figure": 3, "premise1": "Некоторые M не суть P", "premise2": "Все M суть S", "valid": true, "conclusion": "Некоторые S не суть P"}, {"id": 58, "code": "OEA", "name": null, "figure": 3, "premise1": "Некоторые M не суть P", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 59, "code": "OIA", "name": null, "figure": 3, "premise1": "Некоторые M не суть P", "premise2": "Некоторые M суть S", "valid": false, "conclusion": null}, {"id": 60, "code": "OOA", "name": null, "figure": 3, "premise1": "Некоторые M не суть P", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}, {"id": 61, "code": "OAA", "name": null, "figure": 4, "premise1": "Некоторые P не суть M", "premise2": "Все M суть S", "valid": false, "conclusion": null}, {"id": 62, "code": "OEA", "name": null, "figure": 4, "premise1": "Некоторые P не суть M", "premise2": "Ни один M не есть S", "valid": false, "conclusion": null}, {"id": 63, "code": "OIA", "name": null, "figure": 4, "premise1": "Некоторые P не суть M", "premise2": "Некоторые M суть S", "valid": false, "conclusion": null}, {"id": 64, "code": "OOA", "name": null, "figure": 4, "premise1": "Некоторые P не суть M", "premise2": "Некоторые M не суть S", "valid": false, "conclusion": null}];
+</script>
+<script>
+// ===== Diagram engine (ported from Syllogism checker v2) =====
+// Fixed roles for the trainer: index 0 = M, 1 = P, 2 = S.
+// Colors follow the trainer's own legend: M green, P blue, S red.
+const COLORS = {
+  M: { fill:'#639922', stroke:'#3B6D11', text:'#27500A' },
+  P: { fill:'#378ADD', stroke:'#185FA5', text:'#0C447C' },
+  S: { fill:'#D85A30', stroke:'#993C1D', text:'#712B13' }
+};
+
+function relationVariants(quant, mIsSubject){
+  if(quant==='A') return mIsSubject ? [{type:'contains', mark:'none'}] : [{type:'contained', mark:'none'}];
+  if(quant==='E') return [{type:'separate', mark:'none'}];
+  if(quant==='I') return [
+    {type:'overlap',   mark:'intersection'},
+    {type:'contains',  mark:'mFull'},
+    {type:'contained', mark:'otherFull'}
+  ];
+  return mIsSubject ? [
+    {type:'overlap',   mark:'mOnly'},
+    {type:'separate',  mark:'mFull'},
+    {type:'contained', mark:'mRing'}
+  ] : [
+    {type:'overlap',   mark:'otherOnly'},
+    {type:'separate',  mark:'otherFull'},
+    {type:'contains',  mark:'otherRing'}
+  ];
+}
+
+function shapeCaption(type, otherName, mName){
+  if(type==='contains')  return `${otherName} целиком содержит ${mName}`;
+  if(type==='contained') return `${mName} целиком содержит ${otherName}`;
+  if(type==='separate')  return `${otherName} и ${mName} не пересекаются`;
+  return `${otherName} и ${mName} пересекаются частично`;
+}
+
+function sideGeometry(side){
+  const sign = side==='right' ? 1 : -1;
+  return {
+    contains:  {cx:340+sign*70,  cy:280, r:170},
+    contained: {cx:340+sign*45,  cy:280, r:40},
+    separate:  {cx:340+sign*220, cy:280, r:90},
+    overlap:   {cx:340+sign*120, cy:280, r:90},
+    sign
+  };
+}
+
+function svgCircle(c,fill,opacity,stroke){
+  return `<circle cx="${c.cx}" cy="${c.cy}" r="${c.r}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="0.75"/>`;
+}
+function labelAbove(c,name,color){
+  const ly = Math.max(c.cy-c.r-16, 24);
+  return `<text x="${c.cx}" y="${ly}" font-size="22" font-weight="600" text-anchor="middle" fill="${color}">${name}</text>`;
+}
+function labelAt(x,y,name,color){
+  return `<text x="${x}" y="${y+7}" font-size="22" font-weight="600" text-anchor="middle" fill="${color}">${name}</text>`;
+}
+function leaderLine(x1,y1,x2){
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y1}" stroke="#5f5e5a" stroke-width="0.5" stroke-dasharray="3 3"/>`;
+}
+function markAt(x,y){
+  return `<text x="${x}" y="${y+5}" font-size="16" font-weight="500" text-anchor="middle" fill="#2c2c2a">×</text>`;
+}
+
+function drawSide(side, otherName, rel, colorFill, colorStroke, colorText){
+  const g = sideGeometry(side);
+  const sign = g.sign;
+  let shapes='', mark='';
+  if(rel.type==='contains'){
+    const c = g.contains;
+    shapes += svgCircle(c, colorFill, 0.18, colorStroke);
+    if(rel.mark==='mFull') mark = markAt(340+sign*30, 280);
+    else if(rel.mark==='otherRing') mark = markAt(340+sign*120, 280);
+  } else if(rel.type==='contained'){
+    const c = g.contained;
+    shapes += svgCircle(c, colorFill, 0.5, colorStroke);
+    if(rel.mark==='otherFull') mark = markAt(c.cx, c.cy);
+    else if(rel.mark==='mRing') mark = markAt(340-sign*50, 280);
+  } else if(rel.type==='separate'){
+    const c = g.separate;
+    shapes += svgCircle(c, colorFill, 0.18, colorStroke);
+    if(rel.mark==='mFull') mark = markAt(340+sign*30, 280);
+    else if(rel.mark==='otherFull') mark = markAt(c.cx, c.cy);
+  } else {
+    const c = g.overlap;
+    shapes += svgCircle(c, colorFill, 0.18, colorStroke);
+    if(rel.mark==='intersection') mark = markAt(340+sign*60, 280);
+    else if(rel.mark==='mOnly') mark = markAt(340-sign*50, 280);
+    else if(rel.mark==='otherOnly') mark = markAt(340+sign*190, 280);
+  }
+  return shapes + mark;
+}
+
+function sideCircle(side, type){
+  const g = sideGeometry(side);
+  if(type==='contains') return g.contains;
+  if(type==='contained') return g.contained;
+  if(type==='separate') return g.separate;
+  return g.overlap;
+}
+
+function buildOneDiagram(relP, relS){
+  const M = {cx:340, cy:280, r:90};
+  let under='', over='';
+  if(relP.type==='contains') under += drawSide('right', 'P', relP, COLORS.P.fill, COLORS.P.stroke, COLORS.P.text);
+  else over += drawSide('right', 'P', relP, COLORS.P.fill, COLORS.P.stroke, COLORS.P.text);
+  if(relS.type==='contains') under += drawSide('left', 'S', relS, COLORS.S.fill, COLORS.S.stroke, COLORS.S.text);
+  else over += drawSide('left', 'S', relS, COLORS.S.fill, COLORS.S.stroke, COLORS.S.text);
+
+  // Tight viewBox: hug the circles actually drawn for this variant,
+  // instead of a fixed canvas, so the picture fills the available space.
+  const rightC = sideCircle('right', relP.type);
+  const leftC = sideCircle('left', relS.type);
+  const circles = [M, rightC, leftC];
+  const minX = Math.min(...circles.map(c=>c.cx-c.r));
+  const maxX = Math.max(...circles.map(c=>c.cx+c.r));
+  const minY = Math.min(...circles.map(c=>c.cy-c.r));
+  const maxY = Math.max(...circles.map(c=>c.cy+c.r));
+  const pad = 18;
+  const vbX = minX-pad, vbY = minY-pad, vbW = (maxX-minX)+2*pad, vbH = (maxY-minY)+2*pad;
+
+  let svg = `<svg width="100%" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" role="img"><title>Диаграмма силлогизма</title>`;
+  svg += under;
+  svg += `<circle cx="${M.cx}" cy="${M.cy}" r="${M.r}" fill="${COLORS.M.fill}" fill-opacity="0.35" stroke="${COLORS.M.stroke}" stroke-width="0.75"/>`;
+  svg += over;
+  svg += `</svg>`;
+  return svg;
+}
+
+// Figure defines which role is subject/predicate in each premise.
+// 0=M, 1=P, 2=S. Premise 1 always relates M&P (major), premise 2 relates M&S (minor).
+const FIGURES = {
+  1: { subj1:0, pred1:1, subj2:2, pred2:0 }, // M-P, S-M
+  2: { subj1:1, pred1:0, subj2:2, pred2:0 }, // P-M, S-M
+  3: { subj1:0, pred1:1, subj2:0, pred2:2 }, // M-P, M-S
+  4: { subj1:1, pred1:0, subj2:0, pred2:2 }, // P-M, M-S
+};
+
+function computeDiagrams(entry){
+  const f = FIGURES[entry.figure];
+  const quant1 = entry.code[0], quant2 = entry.code[1];
+  const variantsP = relationVariants(quant1, f.subj1===0);
+  const variantsS = relationVariants(quant2, f.subj2===0);
+  const diagrams = [];
+  variantsP.forEach(relP=>{
+    variantsS.forEach(relS=>{
+      diagrams.push({
+        svg: buildOneDiagram(relP, relS),
+        cap: shapeCaption(relP.type,'P','M') + ' · ' + shapeCaption(relS.type,'S','M')
+      });
+    });
+  });
+  return diagrams;
+}
+
+// ===== Humanization layer (ported from Swift) =====
+const velarAndSibilants = new Set(['г','к','х','ж','ч','ш','щ']);
+
+function pluralize(word){
+  const lower = word.toLowerCase();
+  if(lower.endsWith('ичка')) return lower.slice(0,-1) + 'и';
+  if(lower.endsWith('вод')) return lower + 'ы';
+  if(lower.endsWith('ист')) return lower + 'ы';
+  if(lower.endsWith('лог')) return lower + 'и';
+  if(lower.endsWith('ид')) return lower + 'ы';
+  if(lower.endsWith('ель')) return lower.slice(0,-1) + 'и';
+  if(lower.endsWith('ик')) return lower + 'и';
+  if(lower.endsWith('ун')) return lower + 'ы';
+  if(lower.endsWith('ие') || lower.endsWith('ая') || lower.endsWith('ее') || lower.endsWith('ий')){
+    const stem = lower.slice(0,-2);
+    const lastCh = stem.slice(-1);
+    const ending = velarAndSibilants.has(lastCh) ? 'ие' : 'ые';
+    return stem + ending;
+  }
+  return lower + 'ы';
+}
+function isAdjectiveForm(word){
+  const lower = word.toLowerCase();
+  return lower.endsWith('ые') || lower.endsWith('ие');
+}
+const adjectiveRawEndings = ['ие', 'ая', 'ее', 'ий'];
+function isRawAdjectiveForm(word){
+  const lower = word.toLowerCase();
+  return adjectiveRawEndings.some(e => lower.endsWith(e));
+}
+function singularizeMasculine(word){
+  const lower = word.toLowerCase();
+  if(!isRawAdjectiveForm(lower)) return lower;
+  const stem = lower.slice(0,-2);
+  const lastCh = stem.slice(-1);
+  const ending = velarAndSibilants.has(lastCh) ? 'ий' : 'ый';
+  return stem + ending;
+}
+
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function wrapColor(text, color){
+  if(!color) return text;
+  return `<span style="color:${color};background:${hexToRgba(color,0.22)};padding:1px 5px;border-radius:5px;">${text}</span>`;
+}
+
+function humanizeA(subject, predicate, subjColor, predColor){
+  const pluralSubject = pluralize(subject);
+  const pluralPredicate = pluralize(predicate);
+  const subjectIsAdjective = isAdjectiveForm(pluralSubject);
+  const predicateIsAdjective = isAdjectiveForm(pluralPredicate);
+  const subjectTerm = subjectIsAdjective ? `${pluralSubject} объекты` : pluralSubject;
+  const subjSpan = wrapColor(subjectTerm, subjColor);
+  const predSpan = wrapColor(pluralPredicate, predColor);
+  if(predicateIsAdjective) return `Все ${subjSpan} ${predSpan}.`;
+  return `Все ${subjSpan} - это ${predSpan}.`;
+}
+function humanizeE(subject, predicate, subjColor, predColor){
+  const subjectIsAdjective = isRawAdjectiveForm(subject);
+  const predicateIsAdjective = isRawAdjectiveForm(predicate);
+  const normalizedSubject = subjectIsAdjective ? singularizeMasculine(subject) : subject;
+  const normalizedPredicate = predicateIsAdjective ? singularizeMasculine(predicate) : predicate;
+  const subjectTerm = subjectIsAdjective ? `${normalizedSubject} объект` : normalizedSubject;
+  const subjSpan = wrapColor(subjectTerm, subjColor);
+  const predSpan = wrapColor(normalizedPredicate, predColor);
+  if(predicateIsAdjective) return `Ни один ${subjSpan} не ${predSpan}.`;
+  return `Ни один ${subjSpan} - это не ${predSpan}.`;
+}
+function humanizeI(subject, predicate, subjColor, predColor){
+  const pluralSubject = pluralize(subject);
+  const pluralPredicate = pluralize(predicate);
+  const subjectIsAdjective = isAdjectiveForm(pluralSubject);
+  const predicateIsAdjective = isAdjectiveForm(pluralPredicate);
+  const subjectTerm = subjectIsAdjective ? `${pluralSubject} объекты` : pluralSubject;
+  const subjSpan = wrapColor(subjectTerm, subjColor);
+  const predSpan = wrapColor(pluralPredicate, predColor);
+  if(predicateIsAdjective) return `Некоторые ${subjSpan} ${predSpan}.`;
+  return `Некоторые ${subjSpan} - это ${predSpan}.`;
+}
+function humanizeO(subject, predicate, subjColor, predColor){
+  const pluralSubject = pluralize(subject);
+  const pluralPredicate = pluralize(predicate);
+  const subjectIsAdjective = isAdjectiveForm(pluralSubject);
+  const predicateIsAdjective = isAdjectiveForm(pluralPredicate);
+  const subjectTerm = subjectIsAdjective ? `${pluralSubject} объекты` : pluralSubject;
+  const subjSpan = wrapColor(subjectTerm, subjColor);
+  const predSpan = wrapColor(pluralPredicate, predColor);
+  if(predicateIsAdjective) return `Некоторые ${subjSpan} не ${predSpan}.`;
+  return `Некоторые ${subjSpan} - это не ${predSpan}.`;
+}
+function humanizePremise(standard, subjColor, predColor){
+  const words = standard.split(' ');
+  if(words.length===4 && words[0]==='Все' && words[2]==='суть') return humanizeA(words[1], words[3], subjColor, predColor);
+  if(words.length===6 && words[0]==='Ни' && words[1]==='один' && words[3]==='не' && words[4]==='есть') return humanizeE(words[2], words[5], subjColor, predColor);
+  if(words.length===4 && words[0]==='Некоторые' && words[2]==='суть') return humanizeI(words[1], words[3], subjColor, predColor);
+  if(words.length===5 && words[0]==='Некоторые' && words[2]==='не' && words[3]==='суть') return humanizeO(words[1], words[4], subjColor, predColor);
+  return standard;
+}
+
+// Word bank: invented nouns stay a fixed list; adjective/participle forms are
+// generated procedurally (ported 1:1 from the supplied Swift morphology generator)
+// so the pool of possible words is effectively unlimited instead of ~9 fixed entries.
+const NOUN_BANK = ['групповод','чатист','диванолог','ленивоид','тормозитель','мемщик','зевун','мистичка'];
+
+const nounRoots = [
+  "групп","файл","чат","диван","кофе","мем","ленив",
+  "тормоз","зевот","мистик","ботан","интернет","телефон",
+  "вайфай","сериал","пицц","носок","будильник","холодильник",
+  "пульт","розетк","батарейк","зарядк","наушник","экран",
+  "клавиатур","мышк","принтер","флешк","парол",
+  "борщ","чай","шашлык","пельмен","варен","печен",
+  "конфет","шоколад","булочк","пирожок",
+  "макарон","селёдк","компот",
+  "лен","скук","радост","груст","истерик","паник",
+  "нервотрёпк","депресс","недосып","похмел",
+  "стресс","апат",
+  "лайк","репост","подписк","сторис","статус","коммент",
+  "спам","троллин","хайп","инфлюенс","блогер","стрим",
+  "донат","мессенджер",
+  "маршрутк","пробк","светофор","переход","остановк",
+  "парковк","самокат","трамвай","метро",
+  "дедлайн","отчёт","совещан","начальник","зарплат",
+  "отпуск","больничн","экзамен","зачёт","лекци",
+  "конспект","шпаргалк",
+  "мороз",
+  "носорог","енот","хомяк","таракан","комар","тапок",
+  "подушк","одеял","занавеск"
+];
+
+const nounSuffixes = [
+  {suffix:"вод",  needsLinkVowel:true},
+  {suffix:"ист",  needsLinkVowel:false},
+  {suffix:"ичка", needsLinkVowel:false},
+  {suffix:"лог",  needsLinkVowel:true},
+  {suffix:"ид",   needsLinkVowel:true},
+  {suffix:"ель",  needsLinkVowel:false},
+  {suffix:"ик",   needsLinkVowel:false},
+  {suffix:"ун",   needsLinkVowel:false},
+];
+
+const nounSoftConsonants = new Set(["л","н","р","ч","щ","й"]);
+const nounVowels = new Set(["а","е","ё","и","о","у","ы","э","ю","я"]);
+const nounFrontVowels = new Set(["и","е"]);
+const nounPalatalMutations = {"к":"ч","г":"ж","х":"ш"};
+
+// к/г/х перед суффиксом, начинающимся на и/е, переходят в ч/ж/ш
+// (рук-а → руч-к-а, ног-а → нож-к-а, ух-о → уш-к-о)
+function palatalize(root, firstSuffixChar){
+  const last = root.slice(-1);
+  if(!last || !nounFrontVowels.has(firstSuffixChar) || !nounPalatalMutations[last]){
+    return {root, mutated:false};
+  }
+  return {root: root.slice(0,-1) + nounPalatalMutations[last], mutated:true};
+}
+
+function generateNoun(){
+  let root = nounRoots[Math.floor(Math.random()*nounRoots.length)];
+  const suffixInfo = nounSuffixes[Math.floor(Math.random()*nounSuffixes.length)];
+  const firstSuffixChar = suffixInfo.suffix.charAt(0);
+
+  let word;
+  if(suffixInfo.needsLinkVowel){
+    // суффиксы вроде "-оид" всегда несут свою связующую гласную —
+    // мутация здесь не нужна, перед корнем никогда не окажется "и"/"е" напрямую
+    word = root;
+    const lastChar = root.slice(-1);
+    if(lastChar && !nounVowels.has(lastChar)){
+      const linkVowel = nounSoftConsonants.has(lastChar) ? "е" : "о";
+      word += linkVowel;
+    }
+    word += suffixInfo.suffix;
+  } else {
+    // суффикс присоединяется напрямую к корню — проверяем палатализацию
+    const mutation = palatalize(root, firstSuffixChar);
+    if(mutation.mutated) root = mutation.root;
+    word = root;
+    const lastChar = root.slice(-1);
+    if(lastChar && nounVowels.has(lastChar) && lastChar === firstSuffixChar){
+      // дублирующаяся гласная на стыке (кофе + ель → "кофель")
+      word += suffixInfo.suffix.slice(1);
+    } else {
+      word += suffixInfo.suffix;
+    }
+  }
+  return word.toLowerCase();
+}
+
+const prefixDefs = [
+  {form:"",     zs:false, hasO:false},
+  {form:"в",    zs:false, hasO:true},
+  {form:"вы",   zs:false, hasO:false},
+  {form:"вз",   zs:true,  hasO:true},
+  {form:"за",   zs:false, hasO:false},
+  {form:"из",   zs:true,  hasO:true},
+  {form:"пере", zs:false, hasO:false},
+  {form:"по",   zs:false, hasO:false},
+  {form:"под",  zs:false, hasO:true},
+  {form:"про",  zs:false, hasO:false},
+  {form:"раз",  zs:true,  hasO:true},
+  {form:"у",    zs:false, hasO:false},
+  {form:"от",   zs:false, hasO:true},
+  {form:"при",  zs:false, hasO:false},
+  {form:"недо", zs:false, hasO:false},
+  {form:"об",   zs:false, hasO:true},
+  {form:"над",  zs:false, hasO:true},
+  {form:"без",  zs:true,  hasO:false},
+];
+
+const adjRoots = [
+  "камен","гиб","бег","плав","дрож","черств","пуст","хруст",
+  "мист","морок","трещ","свист","гряз","тускл","жёст",
+  "льд","пепел","тлен","стекл","ветш","смол",
+  "ржав","гнил","сгущ","сох","мокр","сыр","черн",
+  "красн","бел","желт","зелен","сер","тёмн","светл",
+  "тепл","холод","горяч","мёрзл","жар","остыл",
+  "звон","шум","тих","громк","скрип","стук","хлоп",
+  "визж","рёв","рык","вопл","стон","хохот","плач",
+  "дым","чад","копот","пар","туман","облак",
+  "ветр","вихр","бур","молн","громов",
+  "ауст","вирм","склон","жуст","мерт","плеск","твард","квищ",
+  "брюст","фрящ","дрюсл","клощ","твирн","шварг","плюсн",
+  "гряст","мокщ","льщав","гринт","морщт",
+  "свяск","жвирт","клямс","дрёщ","гвист",
+  "твящ","мрящ","скворш","плящ","звярд","хляск",
+  "твирьг","гнущ","твярд"
+];
+
+const thematicVowels = [
+  {form:"е",   conj:"1"},
+  {form:"а",   conj:"1"},
+  {form:"я",   conj:"1"},
+  {form:"ы",   conj:"1"},
+  {form:"и",   conj:"2"},
+  {form:"ова", conj:"ova"},
+];
+
+const morphConsonants = new Set("бвгджзйклмнпрстфхцчшщ".split(''));
+const morphVowels = new Set("аеёиоуыэюя".split(''));
+const morphVoiceless = new Set("кпстфхцчшщ".split(''));
+const morphHissing = new Set("жчшщ".split(''));
+
+function conj1Suffix(themeForm){
+  return (themeForm === "а" || themeForm === "ы") ? "ущ" : "ющ";
+}
+function conj2Suffix(root){
+  const last = root.slice(-1);
+  if(!last) return "ящ";
+  return morphHissing.has(last) ? "ащ" : "ящ";
+}
+function pickPastSuffix(){
+  return Math.random() < 0.08 ? "ш" : "вш";
+}
+
+function processPrefix(def, root){
+  const notes = [];
+  let form = def.form;
+  if(!form) return {form, notes};
+
+  const firstRootChar = root.charAt(0) || null;
+  const secondRootChar = root.length > 1 ? root.charAt(1) : null;
+
+  let usesO = false;
+  if(def.hasO){
+    const last = form.slice(-1);
+    if(morphConsonants.has(last) && firstRootChar && morphConsonants.has(firstRootChar) &&
+       secondRootChar && morphConsonants.has(secondRootChar)){
+      usesO = true;
+    }
+  }
+
+  const nextSound = usesO ? "о" : (firstRootChar || " ");
+
+  if(def.zs && form.endsWith("з") && morphVoiceless.has(nextSound)){
+    form = form.slice(0,-1) + "с";
+    notes.push("з→с");
+  }
+  if(usesO){
+    form += "о";
+    notes.push("полная форма");
+  }
+  return {form, notes};
+}
+
+function applyYRule(prefixForm, root){
+  const last = prefixForm.slice(-1);
+  if(!last || !morphConsonants.has(last) || !root.startsWith("и")){
+    return {root, changed:false};
+  }
+  return {root: "ы" + root.slice(1), changed:true};
+}
+
+function morphCombine(stem, piece){
+  const last = stem.slice(-1);
+  const first = piece.charAt(0);
+  if(!last || !first) return {insertion:"", piece, merged:false};
+  if(morphConsonants.has(last) && morphConsonants.has(first)){
+    if(piece.length > 1 && morphConsonants.has(piece.charAt(1))){
+      return {insertion:"о", piece, merged:false};
+    }
+  }
+  if(morphVowels.has(last) && morphVowels.has(first) && last === first){
+    return {insertion:"", piece: piece.slice(1), merged:true};
+  }
+  return {insertion:"", piece, merged:false};
+}
+
+function generateAdjective(){
+  const prefixDef = prefixDefs[Math.floor(Math.random()*prefixDefs.length)];
+  let root = adjRoots[Math.floor(Math.random()*adjRoots.length)];
+  const theme = thematicVowels[Math.floor(Math.random()*thematicVowels.length)];
+  const isPast = Math.random() < 0.5;
+  const ending = "ий";
+
+  const processed = processPrefix(prefixDef, root);
+  const prefixForm = processed.form;
+
+  const yRule = applyYRule(prefixForm, root);
+  if(yRule.changed) root = yRule.root;
+
+  let themeForm = theme.form;
+  let suffix;
+  if(isPast){
+    suffix = pickPastSuffix();
+  } else if(theme.conj === "ova"){
+    themeForm = "у";
+    suffix = "ющ";
+  } else if(theme.conj === "2"){
+    suffix = conj2Suffix(root);
+  } else {
+    suffix = conj1Suffix(themeForm);
+  }
+
+  let word = prefixForm;
+  [root, themeForm, suffix, ending].forEach(piece => {
+    const result = morphCombine(word, piece);
+    word += result.insertion;
+    word += result.piece;
+  });
+
+  return word.toLowerCase();
+}
+
+// ===== Professional-level engine (n=4..6 terms, arbitrary and/or/not formulas) =====
+// Ported from syllogism-engine.js: export keywords stripped (inlined script),
+// and its own genWord() replaced with our generateNoun()/generateAdjective().
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function generateEngineWords(n){
+  const used = new Set();
+  const words = [];
+  let guard_ = 0;
+  while(words.length < n && guard_ < 300){
+    guard_++;
+    const w = Math.random() < 0.45 ? generateAdjective() : generateNoun();
+    if(!used.has(w)){ used.add(w); words.push(w); }
+  }
+  return words;
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+// ---------- formula AST ----------
+function evalF(ast, region){
+  if(ast.t==='lit'){ const b=(region>>ast.i)&1; return ast.neg ? b===0 : b===1; }
+  if(ast.t==='and') return evalF(ast.a,region) && evalF(ast.b,region);
+  if(ast.t==='or')  return evalF(ast.a,region) || evalF(ast.b,region);
+}
+function evalF2(ast, region){
+  if(ast.t==='__not') return !evalF(ast.a, region);
+  return evalF(ast, region);
+}
+// Returns an AST equivalent to NOT(ast), with negation pushed down to the
+// literals (De Morgan) — used only for rendering, never for evaluation, so
+// checkEntailment/evalF2 keep working on the original, untouched AST.
+function negatedDisplay(ast){
+  if(ast.t==='lit') return {t:'lit', i:ast.i, neg: !ast.neg};
+  if(ast.t==='and') return {t:'or', a: negatedDisplay(ast.a), b: negatedDisplay(ast.b)};
+  if(ast.t==='or')  return {t:'and', a: negatedDisplay(ast.a), b: negatedDisplay(ast.b)};
+  if(ast.t==='__not') return ast.a; // NOT(NOT(a)) = a
+}
+
+function textF(ast, words, plural){
+  if(ast.t==='__not') return textF(negatedDisplay(ast.a), words, plural);
+  if(ast.t==='lit'){
+    const w = plural ? pluralize(words[ast.i]) : words[ast.i];
+    return (ast.neg?'не ':'') + w;
+  }
+  if(ast.t==='and') return textF(ast.a,words,plural)+' и '+textF(ast.b,words,plural);
+  if(ast.t==='or')  return textF(ast.a,words,plural)+' или '+textF(ast.b,words,plural);
+}
+
+// ---------- statement construction ----------
+const FORM_TYPES = ['ALL','ONLY','SOME','SOMENOT'];
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function assignExtras(n){
+  const extras = shuffle(Array.from({length:Math.max(0,n-3)}, (_,k)=>k+3));
+  const slots = [[],[],[],[]];
+  extras.forEach((e,k)=> slots[k%4].push(e));
+  return slots;
+}
+function buildFormulaForSlot(coreIdx, extraIdxs){
+  let ast = {t:'lit', i:coreIdx, neg: Math.random()<0.35};
+  extraIdxs.forEach(e=>{
+    ast = {t: Math.random()<0.5?'and':'or', a:ast, b:{t:'lit', i:e, neg: Math.random()<0.35}};
+  });
+  return ast;
+}
+function buildStatement(formType, subjAst, predAst, words){
+  let text, kind, esubj, epred;
+  if(formType==='ALL'){
+    text = cap(textF(subjAst,words,false)) + ' — это ' + textF(predAst,words,false) + '.';
+    kind='all'; esubj=subjAst; epred=predAst;
+  } else if(formType==='ONLY'){
+    text = 'Только ' + textF(subjAst,words,false) + ' — это ' + textF(predAst,words,false) + '.';
+    kind='all'; esubj=predAst; epred=subjAst;
+  } else if(formType==='SOME'){
+    text = 'Некоторые ' + textF(subjAst,words,true) + ' есть ' + textF(predAst,words,true) + '.';
+    kind='some'; esubj=subjAst; epred=predAst;
+  } else {
+    text = 'Некоторые ' + textF(subjAst,words,true) + ' не суть ' + textF(predAst,words,true) + '.';
+    kind='some'; esubj=subjAst; epred={t:'__not', a:predAst};
+  }
+  return {formType, text, kind, subj:esubj, pred:epred};
+}
+function statementFromFormulas(subjAst, predAst, words){
+  return buildStatement(pick(FORM_TYPES), subjAst, predAst, words);
+}
+
+// ---------- region engine ----------
+function forbiddenRegions(subj, pred, nBits){
+  const rs=[];
+  for(let r=0;r<(1<<nBits);r++){ if(evalF2(subj,r) && !evalF2(pred,r)) rs.push(r); }
+  return rs;
+}
+function satisfyRegions(subj, pred, nBits){
+  const rs=[];
+  for(let r=0;r<(1<<nBits);r++){ if(evalF2(subj,r) && evalF2(pred,r)) rs.push(r); }
+  return rs;
+}
+function checkEntailment(premises, conclusion, nBits){
+  const forcedZero = new Set();
+  const orReqs = [];
+  premises.forEach(p=>{
+    if(p.kind==='all') forbiddenRegions(p.subj,p.pred,nBits).forEach(r=>forcedZero.add(r));
+    else orReqs.push(satisfyRegions(p.subj,p.pred,nBits));
+  });
+  let premisesConsistentFlag = true;
+  for(const req of orReqs){ if(req.every(r=>forcedZero.has(r))){ premisesConsistentFlag=false; break; } }
+
+  if(conclusion.kind==='all'){
+    orReqs.push(forbiddenRegions(conclusion.subj, conclusion.pred, nBits));
+  } else {
+    satisfyRegions(conclusion.subj, conclusion.pred, nBits).forEach(r=>forcedZero.add(r));
+  }
+  let witness=null;
+  let satisfiable = true;
+  for(const req of orReqs){
+    const free = req.filter(r=>!forcedZero.has(r));
+    if(free.length===0){ satisfiable=false; break; }
+    witness = free[0];
+  }
+  return { valid: !satisfiable, witness, forcedZero, premisesConsistent: premisesConsistentFlag };
+}
+
+function buildCandidateFormulas(n, premises){
+  const cands = [];
+  for(let i=0;i<n;i++) for(const neg of [false,true]) cands.push({t:'lit', i, neg});
+  premises.forEach(p=>{
+    [p.subj, p.pred].forEach(ast=>{
+      if(ast.t!=='lit'){ cands.push(ast); cands.push({t:'__not', a:ast}); }
+    });
+  });
+  const seen = new Set();
+  return cands.filter(c=>{ const k=JSON.stringify(c); return seen.has(k) ? false : (seen.add(k), true); });
+}
+
+function premisesConsistent(premises, n){
+  const forcedZero = new Set(); const orReqs = [];
+  premises.forEach(p=>{
+    if(p.kind==='all') forbiddenRegions(p.subj,p.pred,n).forEach(r=>forcedZero.add(r));
+    else orReqs.push(satisfyRegions(p.subj,p.pred,n));
+  });
+  return orReqs.every(req => req.some(r=>!forcedZero.has(r)));
+}
+
+function baseForcedZero(premises, n){
+  const forcedZero = new Set();
+  premises.forEach(p=>{
+    if(p.kind==='all') forbiddenRegions(p.subj,p.pred,n).forEach(r=>forcedZero.add(r));
+  });
+  return forcedZero;
+}
+
+function usedIndices(ast, into){
+  into = into || new Set();
+  if(ast.t==='lit') into.add(ast.i);
+  else if(ast.t==='__not') usedIndices(ast.a, into);
+  else { usedIndices(ast.a, into); usedIndices(ast.b, into); }
+  return into;
+}
+
+function findConclusions(premises, n, words){
+  const found = [];
+  const order = ['ALL','ONLY','SOME','SOMENOT'];
+  const bfz = baseForcedZero(premises, n);
+  const cands = buildCandidateFormulas(n, premises);
+  const candKey = c => JSON.stringify(c);
+
+  // A proper syllogistic conclusion must eliminate the middle term(s) —
+  // any index that appears in BOTH premises is "middle" and may not
+  // reappear in the conclusion, even if some formula mentioning it happens
+  // to be logically entailed (that's a valid inference, just not a
+  // syllogistic *conclusion* in the classical sense).
+  const idxP1 = new Set([...usedIndices(premises[0].subj), ...usedIndices(premises[0].pred)]);
+  const idxP2 = new Set([...usedIndices(premises[1].subj), ...usedIndices(premises[1].pred)]);
+  const middleIdx = new Set([...idxP1].filter(i => idxP2.has(i)));
+
+  for(const formType of order){
+    for(const subjAst of cands){
+      for(const predAst of cands){
+        if(candKey(subjAst) === candKey(predAst)) continue;
+        const stmt = buildStatement(formType, subjAst, predAst, words);
+        const usedInConclusion = new Set([...usedIndices(stmt.subj), ...usedIndices(stmt.pred)]);
+        if([...middleIdx].some(i => usedInConclusion.has(i))) continue;
+        if(!checkEntailment(premises, stmt, n).valid) continue;
+        const trivial = premises.some(p => checkEntailment([p], stmt, n).valid);
+        if(trivial) continue;
+        if(stmt.kind==='all'){
+          const antecedentRegions = [];
+          for(let r=0;r<(1<<n);r++) if(evalF2(stmt.subj,r)) antecedentRegions.push(r);
+          if(antecedentRegions.every(r=>bfz.has(r))) continue;
+        }
+        found.push(stmt);
+      }
+    }
+  }
+
+  // Synthesize the *maximal* conclusion for each existential premise: take one
+  // concrete witness region for it, collect every non-middle literal atom that
+  // is true there, and AND them all together. The exhaustive search above only
+  // ever combines whole premise-pieces or single literals, so it can find a
+  // subset of this (dropping some proven atoms) but never this full join —
+  // the dominance-pruning step below then keeps whichever is actually stronger.
+  function forcedAtomsAcrossRegions(regions){
+    const atoms = [];
+    for(let i=0;i<n;i++){
+      if(middleIdx.has(i)) continue;
+      const bits = regions.map(r=>(r>>i)&1);
+      const allSame = bits.every(b=>b===bits[0]);
+      if(allSame) atoms.push({t:'lit', i, neg: bits[0]===0});
+    }
+    return atoms;
+  }
+  function foldAnd(atoms){
+    let ast = atoms[0];
+    for(let k=1;k<atoms.length;k++) ast = {t:'and', a:ast, b:atoms[k]};
+    return ast;
+  }
+  premises.forEach(p=>{
+    if(p.kind!=='some') return;
+    const freeRegions = satisfyRegions(p.subj, p.pred, n).filter(r=>!bfz.has(r));
+    if(freeRegions.length===0) return;
+    const atoms = forcedAtomsAcrossRegions(freeRegions);
+    if(atoms.length < 2) return; // nothing extra to combine beyond a single literal
+    const half = Math.ceil(atoms.length/2);
+    const subjAst = foldAnd(atoms.slice(0, half));
+    const predAst = foldAnd(atoms.slice(half));
+    const stmt = buildStatement('SOME', subjAst, predAst, words);
+    const usedInConclusion = new Set([...usedIndices(stmt.subj), ...usedIndices(stmt.pred)]);
+    if([...middleIdx].some(i => usedInConclusion.has(i))) return;
+    if(!checkEntailment(premises, stmt, n).valid) return;
+    const trivial = premises.some(pp => checkEntailment([pp], stmt, n).valid);
+    if(trivial) return;
+    found.push(stmt);
+  });
+
+  // Same idea, but for universal (ALL-type) reasoning: for each candidate
+  // antecedent formula (that doesn't itself use a middle term), find every
+  // "live" region where it holds without being forbidden, then take every
+  // non-middle literal that is constant true across ALL those regions —
+  // this is the strongest possible consequent, not just one piece of it.
+  premises.forEach(basePremise => {
+    // try each premise's own subject as a candidate antecedent (either side
+    // could carry the surviving, non-middle formula depending on the mood)
+    [basePremise.subj, basePremise.pred].forEach(subjAst => {
+      const usedSubj = usedIndices(subjAst);
+      if([...middleIdx].some(i => usedSubj.has(i))) return;
+      const liveRegions = [];
+      for(let r=0;r<(1<<n);r++){ if(evalF2(subjAst,r) && !bfz.has(r)) liveRegions.push(r); }
+      if(liveRegions.length===0) return; // vacuous antecedent
+      const atoms = forcedAtomsAcrossRegions(liveRegions).filter(a => !usedSubj.has(a.i));
+      if(atoms.length===0) return;
+      const predAst = atoms.length===1 ? atoms[0] : foldAnd(atoms);
+      const stmt = buildStatement('ALL', subjAst, predAst, words);
+      const usedInConclusion = new Set([...usedIndices(stmt.subj), ...usedIndices(stmt.pred)]);
+      if([...middleIdx].some(i => usedInConclusion.has(i))) return;
+      if(!checkEntailment(premises, stmt, n).valid) return;
+      const trivial = premises.some(pp => checkEntailment([pp], stmt, n).valid);
+      if(trivial) return;
+      found.push(stmt);
+    });
+  });
+
+  const seen = new Set();
+  const unique = found.filter(s => seen.has(s.text) ? false : (seen.add(s.text), true));
+
+  function naturalness(s){
+    const predSimple = s.pred.t === 'lit' || (s.pred.t==='__not' && s.pred.a.t==='lit');
+    const subjSimple = s.subj.t === 'lit';
+    let score = 0;
+    if(predSimple) score += 1;
+    if(!subjSimple) score += 1;
+    return score;
+  }
+  const keep = unique.slice();
+  for(let a=0;a<keep.length;a++){
+    if(!keep[a]) continue;
+    for(let b=a+1;b<keep.length;b++){
+      if(!keep[b]) continue;
+      const aImpliesB = checkEntailment([keep[a]], keep[b], n).valid;
+      const bImpliesA = checkEntailment([keep[b]], keep[a], n).valid;
+      if(aImpliesB && bImpliesA){
+        if(naturalness(keep[b]) > naturalness(keep[a])) keep[a] = keep[b];
+        keep[b] = null;
+        continue;
+      }
+      if(aImpliesB) keep[b] = null;
+      else if(bImpliesA){ keep[a] = null; break; }
+    }
+  }
+  return keep.filter(Boolean);
+}
+
+function generatePremises(n){
+  const words = generateEngineWords(n);
+  const slots = assignExtras(n);
+  const p1 = statementFromFormulas(
+    buildFormulaForSlot(0, slots[0]),
+    buildFormulaForSlot(1, slots[1]),
+    words
+  );
+  const p2 = statementFromFormulas(
+    buildFormulaForSlot(1, slots[2]),
+    buildFormulaForSlot(2, slots[3]),
+    words
+  );
+  return { words, premises: [p1, p2], nBits: n };
+}
+
+function solve({ premises, nBits, words }){
+  if(!premisesConsistent(premises, nBits)){
+    return { consistent: false, conclusions: [] };
+  }
+  return { consistent: true, conclusions: findConclusions(premises, nBits, words) };
+}
+
+function pickTermWords(){
+  // one word per role [M, P, S], each independently a noun or a freshly generated adjective/participle
+  const used = new Set();
+  const words = [];
+  let guard_ = 0;
+  while(words.length < 3 && guard_ < 50){
+    guard_++;
+    const w = Math.random() < 0.45 ? generateAdjective() : generateNoun();
+    if(!used.has(w)){ used.add(w); words.push(w); }
+  }
+  return words; // [wordForM, wordForP, wordForS]
+}
+
+function standardSentence(quant, subjWord, predWord){
+  if(quant==='A') return `Все ${subjWord} суть ${predWord}`;
+  if(quant==='E') return `Ни один ${subjWord} не есть ${predWord}`;
+  if(quant==='I') return `Некоторые ${subjWord} суть ${predWord}`;
+  return `Некоторые ${subjWord} не суть ${predWord}`;
+}
+
+function termLetter(idx){ return idx===0 ? 'M' : idx===1 ? 'P' : 'S'; }
+function colorFor(idx){ return COLORS[termLetter(idx)].fill; }
+
+function buildPremiseTexts(entry, words, colored){
+  const f = FIGURES[entry.figure];
+  const quant1 = entry.code[0], quant2 = entry.code[1];
+  const std1 = standardSentence(quant1, words[f.subj1], words[f.pred1]);
+  const std2 = standardSentence(quant2, words[f.subj2], words[f.pred2]);
+  const c1s = colored ? colorFor(f.subj1) : null;
+  const c1p = colored ? colorFor(f.pred1) : null;
+  const c2s = colored ? colorFor(f.subj2) : null;
+  const c2p = colored ? colorFor(f.pred2) : null;
+  return [
+    humanizePremise(std1, c1s, c1p),
+    humanizePremise(std2, c2s, c2p)
+  ];
+}
+
+function buildConclusionText(entry, words){
+  if(!entry.valid) return null;
+  const concQuant = entry.code[2];
+  const std = standardSentence(concQuant, words[2], words[1]); // subject=S, predicate=P
+  return humanizePremise(std); // no colors in the conclusion
+}
+</script>
+<script>
+(function(){
+  const entries = window.__QUIZ_ENTRIES__;
+  let currentLevel = 'beginner';
+
+  function isBeginnerFriendly(e){
+    return (e.code[0]==='A' || e.code[0]==='I') && (e.code[1]==='A' || e.code[1]==='I');
+  }
+  function levelPool(){
+    return currentLevel === 'amateur' ? entries : entries.filter(isBeginnerFriendly);
+  }
+
+  let current = null;
+  let currentWords = null;
+  let diagrams = [];
+  let diagramIndex = 0;
+  let seenCount = 0;
+
+  const premise1El = document.getElementById('premise1');
+  const premise2El = document.getElementById('premise2');
+  const revealBtn = document.getElementById('revealBtn');
+  const answerBlock = document.getElementById('answerBlock');
+  const stampEl = document.getElementById('stamp');
+  const verdictText = document.getElementById('verdictText');
+  const plateHolder = document.getElementById('plateHolder');
+  const plateCaption = document.getElementById('plateCaption');
+  const carouselControls = document.getElementById('carouselControls');
+  const dotsHolder = document.getElementById('dotsHolder');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+  const statsLine = document.getElementById('statsLine');
+  const levelBeginnerBtn = document.getElementById('levelBeginner');
+  const levelAmateurBtn = document.getElementById('levelAmateur');
+  const levelProBtn = document.getElementById('levelPro');
+  const levelToggleEl = document.getElementById('levelToggle');
+  const carouselWrapEl = document.getElementById('carouselWrap');
+  let proState = null;
+
+  function fitPremiseText(el){
+    el.style.fontSize = '16px';
+    let size = 16;
+    const minSize = 10.5;
+    while(el.scrollWidth > el.clientWidth && size > minSize){
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+  }
+
+  function pickRandom(){
+    const pool = levelPool();
+    const wantValid = Math.random() < 0.5;
+    const subset = pool.filter(e => e.valid === wantValid);
+    const finalPool = subset.length ? subset : pool;
+    return finalPool[Math.floor(Math.random() * finalPool.length)];
+  }
+
+  function setLevel(level){
+    currentLevel = level;
+    levelBeginnerBtn.classList.toggle('active', level==='beginner');
+    levelAmateurBtn.classList.toggle('active', level==='amateur');
+    levelProBtn.classList.toggle('active', level==='professional');
+    newQuestion();
+  }
+
+  function romanFigure(f){ return ['I','II','III','IV'][f-1]; }
+
+  function newQuestion(){
+    answerBlock.classList.add('hidden');
+    revealBtn.classList.remove('hidden');
+    revealBtn.disabled = false;
+    levelToggleEl.classList.remove('hidden');
+    carouselWrapEl.classList.remove('hidden');
+
+    if(currentLevel === 'professional'){
+      const n = [4,5,6][Math.floor(Math.random()*3)];
+      proState = generatePremises(n);
+      premise1El.textContent = proState.premises[0].text;
+      premise2El.textContent = proState.premises[1].text;
+      fitPremiseText(premise1El);
+      fitPremiseText(premise2El);
+      return;
+    }
+
+    current = pickRandom();
+    currentWords = pickTermWords();
+    diagramIndex = 0;
+    const [h1, h2] = buildPremiseTexts(current, currentWords, false);
+    premise1El.innerHTML = h1;
+    premise2El.innerHTML = h2;
+    fitPremiseText(premise1El);
+    fitPremiseText(premise2El);
+  }
+
+  function renderDiagram(){
+    if(diagrams.length === 0){
+      plateHolder.innerHTML = '';
+      carouselControls.classList.add('hidden');
+      plateCaption.textContent = '';
+      return;
+    }
+    const d = diagrams[diagramIndex];
+    plateHolder.innerHTML = d.svg;
+    if(diagrams.length > 1){
+      carouselControls.classList.remove('hidden');
+      prevBtn.disabled = diagramIndex === 0;
+      nextBtn.disabled = diagramIndex === diagrams.length - 1;
+      dotsHolder.innerHTML = diagrams.map((_, i) =>
+        '<span class="dot' + (i === diagramIndex ? ' active' : '') + '"></span>'
+      ).join('');
+    } else {
+      carouselControls.classList.add('hidden');
+      plateCaption.textContent = '';
+    }
+  }
+
+  function reveal(){
+    seenCount++;
+    levelToggleEl.classList.add('hidden');
+
+    if(currentLevel === 'professional'){
+      carouselWrapEl.classList.add('hidden');
+      const result = solve(proState);
+      if(result.consistent && result.conclusions.length > 0){
+        stampEl.classList.add('hidden');
+        stampEl.classList.remove('invalid');
+        verdictText.classList.remove('invalid');
+        verdictText.classList.add('valid');
+        const conc = result.conclusions[0].text;
+        verdictText.textContent = 'Следовательно, ' + conc.charAt(0).toLowerCase() + conc.slice(1);
+      } else {
+        stampEl.classList.remove('hidden');
+        stampEl.textContent = 'Решений нет';
+        stampEl.classList.add('invalid');
+        verdictText.classList.remove('valid');
+        verdictText.classList.add('invalid');
+        verdictText.textContent = 'Из данных посылок заключение не следует';
+      }
+      answerBlock.classList.remove('hidden');
+      revealBtn.classList.add('hidden');
+      statsLine.textContent = 'Разобрано: ' + seenCount;
+      return;
+    }
+
+    const [h1c, h2c] = buildPremiseTexts(current, currentWords, true);
+    premise1El.innerHTML = h1c;
+    premise2El.innerHTML = h2c;
+    fitPremiseText(premise1El);
+    fitPremiseText(premise2El);
+    if(current.valid){
+      stampEl.classList.add('hidden');
+      stampEl.classList.remove('invalid');
+      verdictText.classList.remove('invalid');
+      verdictText.classList.add('valid');
+      const conc = buildConclusionText(current, currentWords);
+      verdictText.innerHTML = 'Следовательно, ' + conc.charAt(0).toLowerCase() + conc.slice(1);
+    } else {
+      stampEl.classList.remove('hidden');
+      stampEl.textContent = 'Решений нет';
+      stampEl.classList.add('invalid');
+      verdictText.classList.remove('valid');
+      verdictText.classList.add('invalid');
+      verdictText.textContent = 'Из данных посылок заключение не следует';
+    }
+    diagrams = computeDiagrams(current);
+    renderDiagram();
+    answerBlock.classList.remove('hidden');
+    revealBtn.classList.add('hidden');
+    statsLine.textContent = 'Разобрано: ' + seenCount;
+  }
+
+  revealBtn.addEventListener('click', reveal);
+  nextQuestionBtn.addEventListener('click', newQuestion);
+  prevBtn.addEventListener('click', () => { if(diagramIndex > 0){ diagramIndex--; renderDiagram(); } });
+  nextBtn.addEventListener('click', () => { if(diagramIndex < diagrams.length - 1){ diagramIndex++; renderDiagram(); } });
+  levelBeginnerBtn.addEventListener('click', () => setLevel('beginner'));
+  levelAmateurBtn.addEventListener('click', () => setLevel('amateur'));
+  levelProBtn.addEventListener('click', () => setLevel('professional'));
+
+  levelBeginnerBtn.classList.add('active');
+  newQuestion();
+  window.addEventListener('resize', () => {
+    fitPremiseText(premise1El);
+    fitPremiseText(premise2El);
+  });
+})();
+</script>
+
+</body>
+</html>
