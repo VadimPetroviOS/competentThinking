@@ -676,7 +676,7 @@ const prefixDefs = [
 const adjRoots = [
   "камен","гиб","бег","плав","дрож","черств","пуст","хруст",
   "мист","морок","трещ","свист","гряз","тускл","жёст",
-  "льд","пепел","тлен","стекл","ветш","смол",
+  "леден","пепел","тлен","стекл","ветш","смол",
   "ржав","гнил","сгущ","сох","мокр","сыр","черн",
   "красн","бел","желт","зелен","сер","тёмн","светл",
   "тепл","холод","горяч","мёрзл","жар","остыл",
@@ -684,12 +684,11 @@ const adjRoots = [
   "визж","рёв","рык","вопл","стон","хохот","плач",
   "дым","чад","копот","пар","туман","облак",
   "ветр","вихр","бур","молн","громов",
-  "ауст","вирм","склон","жуст","мерт","плеск","твард","квищ",
-  "брюст","фрящ","дрюсл","клощ","твирн","шварг","плюсн",
-  "гряст","мокщ","льщав","гринт","морщт",
-  "свяск","жвирт","клямс","дрёщ","гвист",
-  "твящ","мрящ","скворш","плящ","звярд","хляск",
-  "твирьг","гнущ","твярд"
+  "нов","стар","молод","добр","хитр","умн","глуп",
+  "весел","бодр","сонн","голод","сыт","быстр","медл",
+  "тяжел","легк","высок","низк","широк","узк","длин",
+  "коротк","толст","тонк","остр","ровн","крив",
+  "чист","мягк","ясн","мутн","гладк","влажн","слаб"
 ];
 
 const thematicVowels = [
@@ -715,7 +714,10 @@ function conj2Suffix(root){
   return morphHissing.has(last) ? "ащ" : "ящ";
 }
 function pickPastSuffix(){
-  return Math.random() < 0.08 ? "ш" : "вш";
+  // "-ш-" (no в) is only grammatical straight after a consonant stem (нёс+ший,
+  // мог+ший). This engine always inserts a vowel theme before the suffix, so
+  // the stem here is never consonant-final — "-вш-" is the only valid choice.
+  return "вш";
 }
 
 function processPrefix(def, root){
@@ -771,40 +773,57 @@ function morphCombine(stem, piece){
   return {insertion:"", piece, merged:false};
 }
 
+// "ы" never sits next to another vowel in native Russian (it can't start a
+// word or follow a vowel), so a thematic "ы" landing right before a
+// vowel-initial suffix (e.g. "ы"+"ущ" → "ыущ") reads as foreign/unpronounceable.
+// Other theme+suffix vowel junctions (аю, ею, ия, аящ...) are all attested
+// in real words, so only this specific clash needs to be rejected.
+function hasAwkwardVowelClash(a, b){
+  if(!a || !b || a === b) return false;
+  if(!morphVowels.has(a) || !morphVowels.has(b)) return false;
+  return a === 'ы' || b === 'ы';
+}
+
 function generateAdjective(){
-  const prefixDef = prefixDefs[Math.floor(Math.random()*prefixDefs.length)];
-  let root = adjRoots[Math.floor(Math.random()*adjRoots.length)];
-  const theme = thematicVowels[Math.floor(Math.random()*thematicVowels.length)];
-  const isPast = Math.random() < 0.5;
-  const ending = "ий";
+  for(let attempt=0; attempt<20; attempt++){
+    const prefixDef = prefixDefs[0]; // TEMP: prefixes disabled for testing — was prefixDefs[Math.floor(Math.random()*prefixDefs.length)]
+    let root = adjRoots[Math.floor(Math.random()*adjRoots.length)];
+    const theme = thematicVowels[Math.floor(Math.random()*thematicVowels.length)];
+    const isPast = Math.random() < 0.5;
+    const ending = "ий";
 
-  const processed = processPrefix(prefixDef, root);
-  const prefixForm = processed.form;
+    const processed = processPrefix(prefixDef, root);
+    const prefixForm = processed.form;
 
-  const yRule = applyYRule(prefixForm, root);
-  if(yRule.changed) root = yRule.root;
+    const yRule = applyYRule(prefixForm, root);
+    if(yRule.changed) root = yRule.root;
 
-  let themeForm = theme.form;
-  let suffix;
-  if(isPast){
-    suffix = pickPastSuffix();
-  } else if(theme.conj === "ova"){
-    themeForm = "у";
-    suffix = "ющ";
-  } else if(theme.conj === "2"){
-    suffix = conj2Suffix(root);
-  } else {
-    suffix = conj1Suffix(themeForm);
+    let themeForm = theme.form;
+    let suffix;
+    if(isPast){
+      suffix = pickPastSuffix();
+    } else if(theme.conj === "ova"){
+      themeForm = "у";
+      suffix = "ющ";
+    } else if(theme.conj === "2"){
+      suffix = conj2Suffix(root);
+    } else {
+      suffix = conj1Suffix(themeForm);
+    }
+
+    let word = prefixForm;
+    let clash = false;
+    for(const piece of [root, themeForm, suffix, ending]){
+      if(hasAwkwardVowelClash(word.slice(-1), piece.charAt(0))){ clash = true; break; }
+      const result = morphCombine(word, piece);
+      word += result.insertion;
+      word += result.piece;
+    }
+    if(clash) continue;
+
+    return word.toLowerCase();
   }
-
-  let word = prefixForm;
-  [root, themeForm, suffix, ending].forEach(piece => {
-    const result = morphCombine(word, piece);
-    word += result.insertion;
-    word += result.piece;
-  });
-
-  return word.toLowerCase();
+  return generateNoun();
 }
 
 // ===== Professional-level engine (n=4..6 terms, arbitrary and/or/not formulas) =====

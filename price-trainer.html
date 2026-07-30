@@ -210,6 +210,13 @@
   .readout .suf { font-size: 14px; color: var(--muted); }
   .readout.flash-good { border-color: var(--good); box-shadow: 0 0 0 3px var(--good-bg); }
   .readout.flash-bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
+  .fake-caret{
+    display:inline-block; width: 2px; height: 22px; background: var(--accent);
+    animation: caretBlink 1s step-end infinite;
+  }
+  .readout.flash-good .fake-caret, .readout.flash-bad .fake-caret{ display:none; }
+  @keyframes caretBlink{ 50%{ opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .fake-caret{ animation:none; } }
   .feedback {
     position: absolute;
     inset: 0;
@@ -227,6 +234,13 @@
   .feedback.show { opacity: 1; transition: opacity .08s ease; }
   .feedback.good { color: var(--good); }
   .feedback.bad { color: var(--bad); }
+
+  .hidden{ display:none !important; }
+  .native-answer-input{
+    position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; border:none; background:transparent; padding:0; margin:0;
+    font-size:16px; cursor:text;
+  }
 
   .keypad {
     display: grid;
@@ -345,8 +359,10 @@
       <p class="prompt" id="prompt-label">Цена за кг, ₽</p>
       <div class="readout" id="readout">
         <span class="val placeholder" id="readout-val">0</span>
+        <span class="fake-caret"></span>
         <span class="suf" id="readout-suf">₽/кг</span>
         <div class="feedback" id="feedback"></div>
+        <input type="text" id="answerInput" class="native-answer-input hidden" inputmode="decimal" autocomplete="off" aria-label="Ответ">
       </div>
 
       <div class="keypad" id="keypad">
@@ -476,6 +492,19 @@
   var readoutValEl = document.getElementById('readout-val');
   var readoutSufEl = document.getElementById('readout-suf');
   var feedbackEl = document.getElementById('feedback');
+  var nativeInputEl = document.getElementById('answerInput');
+
+  if (localStorage.getItem('hideCustomKeypad') === 'true') {
+    document.getElementById('keypad').style.display = 'none';
+    document.getElementById('btn-submit').style.display = 'none';
+    nativeInputEl.classList.remove('hidden');
+    nativeInputEl.addEventListener('input', function () {
+      if (locked) { nativeInputEl.value = input; return; }
+      input = nativeInputEl.value;
+      updateReadout();
+    });
+    readoutEl.addEventListener('click', function () { nativeInputEl.focus(); });
+  }
 
   function fmt(n) {
     return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -495,6 +524,7 @@
 
   function loadQuestion() {
     input = '';
+    if (nativeInputEl) nativeInputEl.value = '';
     locked = false;
     current = nextProduct();
     var fallbackShown = false;

@@ -201,9 +201,9 @@
     <div class="settings-label">Тип задачи</div>
     <div class="topic-grid" id="topicGrid"></div>
 
-    <div class="settings-label" style="margin-top:6px;">Продолжительность: <span id="durationValue">3</span> мин</div>
-    <input type="range" id="durationSlider" min="1" max="10" value="3" step="1">
-    <div class="range-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+    <div class="settings-label" style="margin-top:6px;">Продолжительность: <span id="durationValue">3</span><span id="durationUnit"> мин</span></div>
+    <input type="range" id="durationSlider" min="1" max="11" value="3" step="1">
+    <div class="range-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span style="display:inline-block; transform:scale(1.3);">∞</span></div>
 
     <div>
       <button class="cta" id="startTrainingBtn" style="width:100%;">Начать тренировку ▶</button>
@@ -255,15 +255,22 @@ updateStartBtnLabel();
 
 const durationSlider = document.getElementById('durationSlider');
 const durationValueEl = document.getElementById('durationValue');
+const durationUnitEl = document.getElementById('durationUnit');
+
+function renderDuration(){
+  const isInfinite = durationSlider.value === '11';
+  durationValueEl.innerHTML = isInfinite ? '<span style="display:inline-block; transform:scale(1.3);">∞</span>' : durationSlider.value;
+  durationUnitEl.style.display = isInfinite ? 'none' : '';
+}
 
 const incomingParams = new URLSearchParams(window.location.search);
 const incomingDuration = parseInt(incomingParams.get('duration'), 10);
-if(incomingDuration >= 1 && incomingDuration <= 10){
+if(incomingDuration >= 1 && incomingDuration <= 11){
   durationSlider.value = incomingDuration;
-  durationValueEl.textContent = incomingDuration;
 }
+renderDuration();
 
-durationSlider.addEventListener('input', ()=>{ durationValueEl.textContent = durationSlider.value; });
+durationSlider.addEventListener('input', renderDuration);
 
 startBtn.addEventListener('click', ()=>{
   const selected = document.querySelector('#topicGrid input:checked');

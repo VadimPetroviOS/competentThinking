@@ -736,6 +736,12 @@ function buildKeypad(){
 }
 buildKeypad();
 
+if(localStorage.getItem('hideCustomKeypad') === 'true'){
+  keypad.style.display = 'none';
+  keypadExtra.style.display = 'none';
+  document.getElementById('checkBtn').style.display = 'none';
+}
+
 function pressKey(k){
   if(!currentProblem) return;
   if(k === 'back'){ answerInput.value = answerInput.value.slice(0,-1); }

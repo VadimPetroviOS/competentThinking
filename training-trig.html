@@ -396,6 +396,7 @@ function genProblem(){
 
 const params = new URLSearchParams(window.location.search);
 const durationParam = params.get('duration');
+const isInfiniteDuration = durationParam === '11';
 const durationSec = Math.max(1, parseInt(durationParam || '3', 10)) * 60;
 
 let timeLeft = durationSec;
@@ -418,6 +419,7 @@ const keypadExtra = document.getElementById('keypadExtra');
 const keypad = document.getElementById('keypad');
 
 function renderTimer(){
+  if(isInfiniteDuration){ timerEl.style.textAlign = 'center'; timerEl.innerHTML = '<span style="display:inline-block; transform:scale(1.35);">∞</span>'; timerEl.classList.remove('timer-warn'); return; }
   const m = Math.floor(timeLeft/60), s = timeLeft%60;
   timerEl.textContent = m + ':' + (s<10?'0':'') + s;
   timerEl.classList.toggle('timer-warn', timeLeft <= 10);
@@ -439,6 +441,12 @@ function buildKeypad(){
   }
 }
 buildKeypad();
+
+if(localStorage.getItem('hideCustomKeypad') === 'true'){
+  keypad.style.display = 'none';
+  keypadExtra.style.display = 'none';
+  document.getElementById('checkBtn').style.display = 'none';
+}
 
 function pressKey(k){
   if(!currentProblem) return;
@@ -629,25 +637,25 @@ function finish(){
   const acc = stats.total > 0 ? Math.round(stats.correct/stats.total*100) : 0;
   const correctThreshold = Math.round(9 * minutesUsed * 0.9);
   const accGood = acc > 90;
-  const countGood = stats.correct > correctThreshold;
+  const countGood = isInfiniteDuration ? null : stats.correct > correctThreshold;
 
   const resultBigEl = document.getElementById('resultBig');
   const resultAccEl = document.getElementById('resultAcc');
   resultBigEl.textContent = stats.correct + ' / ' + stats.total;
   resultAccEl.textContent = 'Точность: ' + acc + '%';
-  resultBigEl.style.color = countGood ? 'var(--good)' : 'var(--bad)';
+  resultBigEl.style.color = countGood === null ? 'var(--ink)' : (countGood ? 'var(--good)' : 'var(--bad)');
   resultAccEl.style.color = accGood ? 'var(--good)' : 'var(--bad)';
 
   const badge = document.getElementById('endBadge');
   const title = document.getElementById('endTitle');
   const sub = document.getElementById('endSub');
-  if(countGood && accGood){
+  if((isInfiniteDuration ? true : countGood) && accGood){
     badge.className = 'end-badge win'; badge.textContent = '★';
     title.textContent = 'Отличный результат!';
     sub.textContent = 'Ты хорошо разобрался с этой темой.';
   } else {
     badge.className = 'end-badge lose'; badge.textContent = '●';
-    title.textContent = 'Время вышло';
+    title.textContent = isInfiniteDuration ? 'Тренировка завершена' : 'Время вышло';
     sub.textContent = 'Ещё немного практики — и будет уверенно.';
   }
 }
@@ -660,6 +668,7 @@ renderTimer();
 renderScore();
 nextProblem();
 timerId = setInterval(()=>{
+  if(isInfiniteDuration){ renderTimer(); return; }
   timeLeft--;
   renderTimer();
   if(timeLeft <= 0) finish();
