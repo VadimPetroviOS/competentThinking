@@ -459,7 +459,7 @@
   }
 
   /* ---------- state ---------- */
-  var TARGET = 150;
+  var TARGET = 50;
   var LEVEL2_UNLOCK_SCORE = 50;
   var DURATION = 10 * 60;
   var score = 0;
@@ -594,23 +594,18 @@
       renderScore();
     }
 
-    var done = score >= TARGET;
     setTimeout(function () {
       feedbackEl.className = 'feedback';
       readoutEl.classList.remove('flash-good', 'flash-bad');
-      if (done) {
-        endGame(true);
-      } else {
-        loadQuestion();
-      }
-    }, done ? 300 : 850);
+      loadQuestion();
+    }, 850);
   }
 
   function tick() {
     timeLeft -= 1;
     renderTimer();
     if (timeLeft <= 0) {
-      endGame(false);
+      endGame(score >= TARGET);
     }
   }
 
@@ -637,11 +632,7 @@
     var title = document.getElementById('end-title');
     var sub = document.getElementById('end-sub');
     document.getElementById('end-score').textContent = fmtInt(score);
-    document.getElementById('end-time-stat').style.display = won ? '' : 'none';
-    if (won) {
-      document.getElementById('end-time').textContent =
-        Math.floor(timeLeft / 60) + ':' + (timeLeft % 60 < 10 ? '0' : '') + (timeLeft % 60);
-    }
+    document.getElementById('end-time-stat').style.display = 'none';
 
     if (won) {
       badge.className = 'end-badge win';

@@ -456,7 +456,7 @@ function finish(){
 
   const resultBigEl = document.getElementById('resultBig');
   const resultAccEl = document.getElementById('resultAcc');
-  resultBigEl.textContent = stats.correct + ' / ' + stats.total;
+  resultBigEl.textContent = stats.correct + ' / ' + (isInfiniteDuration ? stats.total : correctThreshold);
   resultAccEl.textContent = 'Точность: ' + acc + '%';
   resultBigEl.style.color = countGood === null ? 'var(--ink)' : (countGood ? 'var(--good)' : 'var(--bad)');
   resultAccEl.style.color = accGood ? 'var(--good)' : 'var(--bad)';
