@@ -525,17 +525,57 @@
       backdrop-filter:none;
       -webkit-backdrop-filter:none;
     }
+    /* Заголовок в оригинальном размере (clamp min 28px) на узких телефонах не
+       помещается в одну строку и переносится — уменьшаем и подтягиваем интервал. */
+    .title{ font-size:19px; letter-spacing:.02em; }
+    .title-row{ margin-bottom:10px; gap:8px; }
     /* На мобильных прячем маленький dpad в углу — вместо него доска получает
        увеличенный паддинг с видимыми кнопками-полосами по всем 4 краям. */
     .dpad-overlay{ display:none; }
     .board-wrap{ padding:var(--edge-btn-size); }
     .edge-btn{ display:flex; }
   }
+
+  /* Игра рассчитана на альбомную ориентацию (как оригинальный Bloxorz на GBA) —
+     там ширины физически больше, и доска не оказывается тесной, как на портретном
+     телефоне. В портрете показываем заглушку с просьбой повернуть экран. */
+  .rotate-prompt{
+    display:none;
+    position:fixed; inset:0; z-index:100;
+    background:var(--bg);
+    flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    text-align:center; padding:24px;
+  }
+  .rotate-prompt .rotate-icon{ font-size:44px; animation:rotateHint 1.6s ease-in-out infinite; }
+  @keyframes rotateHint{ 0%,100%{transform:rotate(0deg);} 50%{transform:rotate(90deg);} }
+  .rotate-prompt h2{ margin:0; font-size:17px; color:var(--text); }
+  .rotate-prompt p{ margin:0; max-width:280px; font-size:13px; color:var(--muted); line-height:1.5; }
+
+  @media (pointer: coarse) and (orientation: portrait){
+    .stage{ display:none; }
+    .rotate-prompt{ display:flex; }
+  }
+
+  /* В ландшафте отдаём доске максимум места: сжимаем шапку и разрешаем панели
+     занимать всю ширину экрана вместо фиксированных 720px. */
+  @media (pointer: coarse) and (orientation: landscape){
+    .stage{ padding:8px 14px; min-height:100vh; }
+    .panel{ max-width:none; padding:10px 16px 12px; }
+    .title{ font-size:16px; }
+    .title-row{ margin-bottom:6px; }
+    .hud{ margin-bottom:6px; }
+    .level-switcher{ margin-bottom:8px; }
+  }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas>
 <div class="nebula"></div>
+<div class="rotate-prompt" id="rotatePrompt">
+  <div class="rotate-icon">📱</div>
+  <h2>Поверни телефон</h2>
+  <p>Игра рассчитана на альбомную ориентацию — так доска помещается целиком и клетки крупнее.</p>
+</div>
 <div class="stage">
 <div class="panel">
 
@@ -729,7 +769,12 @@ function computeCellSize(lvl){
   const byWidth = Math.floor((availW - BOARD_WRAP_PAD*2) / lvl.viewCols);
   const byHeight = Math.floor((availH - BOARD_WRAP_PAD*2) / lvl.viewRows);
   const minCell = isCoarsePointer ? 16 : 20;
-  return Math.max(minCell, Math.min(40, byWidth, byHeight));
+  // В мобильном ландшафте игра — единственное, что на экране (шапка сжата
+  // отдельными media-правилами), так что клетке разрешаем вырасти намного
+  // крупнее дефолтных 40px и реально занять всё освободившееся место.
+  const isMobileLandscape = isCoarsePointer && window.matchMedia('(orientation: landscape)').matches;
+  const maxCell = isMobileLandscape ? 96 : 40;
+  return Math.max(minCell, Math.min(maxCell, byWidth, byHeight));
 }
 
 let state = {
