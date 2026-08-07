@@ -306,6 +306,102 @@
   }
   .stat .l { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 
+  button.cta.ghost {
+    color: var(--ink);
+    background: rgba(255,255,255,.06);
+    box-shadow: none;
+  }
+  button.cta.ghost:hover { background: rgba(255,255,255,.1); }
+
+  /* ---- Report screen ---- */
+  .report-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .report-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--ink);
+  }
+  .report-select {
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 7px 10px;
+    cursor: pointer;
+  }
+  .report-select:focus-visible { outline: 2px solid var(--accent); }
+
+  .report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 56vh;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .report-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 20px 0;
+    margin: 0;
+  }
+  .report-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,.25);
+    border: 1px solid var(--line);
+    border-left: 3px solid transparent;
+    border-radius: 12px;
+    padding: 8px 10px;
+  }
+  .report-item.good { border-left-color: var(--good); }
+  .report-item.bad { border-left-color: var(--bad); }
+  .report-item-img {
+    width: 40px; height: 40px;
+    object-fit: contain;
+    background: #FBFAFF;
+    border-radius: 8px;
+    flex: none;
+  }
+  .report-item-body { flex: 1; min-width: 0; }
+  .report-item-name {
+    font-size: 12.5px;
+    line-height: 1.3;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .report-item-answers {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 2px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .report-item.bad .report-item-answers span:first-child { color: var(--bad); }
+  .report-item.good .report-item-answers span:first-child { color: var(--good); }
+  .report-item-badge {
+    flex: none;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .report-item.good .report-item-badge { color: var(--good); }
+  .report-item.bad .report-item-badge { color: var(--bad); }
+
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
   }
@@ -329,6 +425,7 @@
     .keypad button { padding: 8px 0; font-size: 17px; }
     .keypad button.op[data-k="back"] { font-size: 18px; }
     button.cta { padding: 10px 18px; }
+    .report-list { max-height: 40vh; }
   }
 </style>
 
@@ -383,6 +480,20 @@
         <div class="stat" id="end-time-stat"><div class="n" id="end-time">0:00</div><div class="l">осталось</div></div>
       </div>
       <button class="cta" id="btn-again">Играть снова</button>
+      <button class="cta ghost" id="btn-report">Посмотреть отчёт</button>
+    </div>
+
+    <div class="screen" id="screen-report">
+      <div class="report-header">
+        <h2 class="report-title">Отчёт по сессии</h2>
+        <select class="report-select" id="report-filter">
+          <option value="all">Все</option>
+          <option value="correct">Правильные</option>
+          <option value="wrong">С ошибкой</option>
+        </select>
+      </div>
+      <div class="report-list" id="report-list"></div>
+      <button class="cta ghost" id="btn-report-back">Назад</button>
     </div>
 
   </div>
@@ -469,10 +580,12 @@
   var input = '';
   var timerHandle = null;
   var locked = false;
+  var sessionLog = [];
 
   var screens = {
     play: document.getElementById('screen-play'),
-    end: document.getElementById('screen-end')
+    end: document.getElementById('screen-end'),
+    report: document.getElementById('screen-report')
   };
   function showScreen(name) {
     Object.keys(screens).forEach(function (k) {
@@ -493,6 +606,8 @@
   var readoutSufEl = document.getElementById('readout-suf');
   var feedbackEl = document.getElementById('feedback');
   var nativeInputEl = document.getElementById('answerInput');
+  var reportListEl = document.getElementById('report-list');
+  var reportFilterEl = document.getElementById('report-filter');
 
   if (localStorage.getItem('hideCustomKeypad') === 'true') {
     document.getElementById('keypad').style.display = 'none';
@@ -585,6 +700,15 @@
     var ok = Math.abs(guess - correct) / correct <= 0.05;
     attemptsCount += 1;
 
+    sessionLog.push({
+      name: current.n,
+      img: current.i,
+      unit: current.l,
+      guess: guess,
+      correct: correct,
+      ok: ok
+    });
+
     feedbackEl.className = 'feedback show ' + (ok ? 'good' : 'bad');
     feedbackEl.textContent = ok ? 'Верно! +1' : ('Точно: ' + fmt(correct) + ' ₽/' + current.l);
     readoutEl.classList.add(ok ? 'flash-good' : 'flash-bad');
@@ -613,6 +737,7 @@
     score = 0;
     attemptsCount = 0;
     timeLeft = DURATION;
+    sessionLog = [];
     if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
     renderScore();
     renderTimer();
@@ -647,6 +772,71 @@
     }
     showScreen('end');
   }
+
+  function renderReport(filter) {
+    var list = sessionLog.filter(function (item) {
+      if (filter === 'correct') return item.ok;
+      if (filter === 'wrong') return !item.ok;
+      return true;
+    });
+    reportListEl.textContent = '';
+    if (list.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'report-empty';
+      empty.textContent = 'Нет записей для этого фильтра.';
+      reportListEl.appendChild(empty);
+      return;
+    }
+    list.forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'report-item ' + (item.ok ? 'good' : 'bad');
+
+      var img = document.createElement('img');
+      img.className = 'report-item-img';
+      img.src = item.img;
+      img.alt = '';
+
+      var body = document.createElement('div');
+      body.className = 'report-item-body';
+
+      var name = document.createElement('div');
+      name.className = 'report-item-name';
+      name.textContent = item.name;
+
+      var answers = document.createElement('div');
+      answers.className = 'report-item-answers';
+      var guessSpan = document.createElement('span');
+      guessSpan.textContent = 'Ваш ответ: ' + fmt(item.guess) + ' ₽/' + item.unit;
+      var correctSpan = document.createElement('span');
+      correctSpan.textContent = 'Верно: ' + fmt(item.correct) + ' ₽/' + item.unit;
+      answers.appendChild(guessSpan);
+      answers.appendChild(correctSpan);
+
+      body.appendChild(name);
+      body.appendChild(answers);
+
+      var badge = document.createElement('div');
+      badge.className = 'report-item-badge';
+      badge.textContent = item.ok ? '✓' : '✕';
+
+      row.appendChild(img);
+      row.appendChild(body);
+      row.appendChild(badge);
+      reportListEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('btn-report').addEventListener('click', function () {
+    reportFilterEl.value = 'all';
+    renderReport('all');
+    showScreen('report');
+  });
+  reportFilterEl.addEventListener('change', function () {
+    renderReport(reportFilterEl.value);
+  });
+  document.getElementById('btn-report-back').addEventListener('click', function () {
+    showScreen('end');
+  });
 
   document.getElementById('btn-again').addEventListener('click', resetGame);
   document.getElementById('btn-submit').addEventListener('click', submitAnswer);
